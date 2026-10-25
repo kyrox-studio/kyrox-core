@@ -62,10 +62,6 @@
       "tests": [],
       "gap": "No injection negative tests. Source check 2026-10-25 found no raw text()/f-string SQL or shell calls in backend/app; dynamic sort/filter inputs not yet inventoried."
     },
-    "SEC-07": {
-      "status": "na",
-      "reason": "Core exposes no file upload or import endpoint: no UploadFile/File parameters in backend/app (source check 2026-10-25). Reopen when an upload surface is added."
-    },
     "SEC-08": {
       "status": "required",
       "tests": [
