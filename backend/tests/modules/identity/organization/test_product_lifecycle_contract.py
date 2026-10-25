@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -12,6 +13,15 @@ from app.modules.identity.infrastructure.persistence.models import UserModel
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from identity_api_test_helpers import seed_authenticated_user, seed_user_with_org_permission
+
+
+CONFIGURED_LIFECYCLE_TOKEN = "lifecycle-test-credential-" + "s" * 32
+PUBLIC_DEFAULT_LIFECYCLE_TOKEN = "dev-insecure-product-lifecycle-token-change-me"
+
+
+@pytest.fixture(autouse=True)
+def _configured_lifecycle_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "CORE_PRODUCT_LIFECYCLE_TOKEN", CONFIGURED_LIFECYCLE_TOKEN)
 
 
 def _login(client: TestClient, email: str) -> str:
@@ -60,6 +70,40 @@ def test_product_lifecycle_snapshot_requires_dedicated_credential(
 
     assert missing_response.status_code == 401
     assert wrong_response.status_code == 401
+
+
+def test_product_lifecycle_settings_have_no_default_secret() -> None:
+    from app.core.config import Settings
+
+    assert Settings.model_fields["CORE_PRODUCT_LIFECYCLE_TOKEN"].default is None
+
+
+@pytest.mark.parametrize(
+    "configured",
+    [None, "", "short-lifecycle-token", PUBLIC_DEFAULT_LIFECYCLE_TOKEN],
+)
+def test_product_lifecycle_snapshot_fails_closed_without_secure_credential(
+    client: TestClient,
+    db_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    configured: str | None,
+) -> None:
+    seed = seed_user_with_org_permission(
+        db_session,
+        permission_code="identity.organizations.read",
+    )
+    monkeypatch.setattr(settings, "CORE_PRODUCT_LIFECYCLE_TOKEN", configured)
+    path = f"/api/v1/organizations/{seed.org.id.value}/lifecycle-snapshot"
+
+    public_default_response = client.get(
+        path,
+        headers={"X-Kyrox-Product-Lifecycle-Token": PUBLIC_DEFAULT_LIFECYCLE_TOKEN},
+    )
+    missing_response = client.get(path)
+
+    assert public_default_response.status_code == 503
+    assert missing_response.status_code == 503
+    assert "status" not in public_default_response.json()
 
 
 def test_product_lifecycle_snapshot_reports_active_and_suspended_state(

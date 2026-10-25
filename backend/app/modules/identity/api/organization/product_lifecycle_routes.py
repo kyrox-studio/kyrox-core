@@ -23,10 +23,24 @@ class ProductOrganizationLifecycleSnapshot(BaseModel):
     updated_at: datetime
 
 
+PRODUCT_LIFECYCLE_TOKEN_MIN_LENGTH = 32
+_INSECURE_TOKEN_PREFIX = "dev-insecure"
+
+
 def require_product_lifecycle_credential(
     token: str | None = Header(default=None, alias="X-Kyrox-Product-Lifecycle-Token"),
 ) -> None:
-    if token is None or not compare_digest(token, settings.CORE_PRODUCT_LIFECYCLE_TOKEN):
+    configured = settings.CORE_PRODUCT_LIFECYCLE_TOKEN
+    if (
+        not configured
+        or len(configured) < PRODUCT_LIFECYCLE_TOKEN_MIN_LENGTH
+        or configured.startswith(_INSECURE_TOKEN_PREFIX)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Product lifecycle credential is not configured",
+        )
+    if token is None or not compare_digest(token, configured):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid product lifecycle credential",
@@ -40,6 +54,7 @@ def require_product_lifecycle_credential(
     responses={
         401: {"description": "Invalid product lifecycle credential"},
         404: {"description": "Organization not found"},
+        503: {"description": "Product lifecycle credential is not configured"},
     },
 )
 def get_product_organization_lifecycle_snapshot(
