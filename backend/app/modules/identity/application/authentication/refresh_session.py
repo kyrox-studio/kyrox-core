@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import datetime
 
 from app.modules.identity.application.authentication.client_context import parse_client_context
@@ -36,6 +37,7 @@ class RefreshSessionUseCase:
         token_pair_issuer: TokenPairIssuer,
         clock: Clock,
         organization_repository: OrganizationRepository | None = None,
+        persist_revocation: Callable[[], None] | None = None,
     ) -> None:
         self._user_repository = user_repository
         self._session_repository = session_repository
@@ -44,6 +46,9 @@ class RefreshSessionUseCase:
         self._token_pair_issuer = token_pair_issuer
         self._clock = clock
         self._organization_repository = organization_repository
+        # Rejected requests roll back the request transaction; revocations made
+        # before rejecting must be persisted explicitly to take effect.
+        self._persist_revocation = persist_revocation
 
     def execute(self, command: RefreshSessionCommand) -> AuthTokenPairResult:
         token_hash = self._refresh_token_service.hash(command.refresh_token)
@@ -61,6 +66,7 @@ class RefreshSessionUseCase:
                 stored_token.mark_reuse_detected(now)
             self._refresh_token_repository.update(stored_token)
             self._revoke_session_if_active(stored_token.session_id, now)
+            self._persist_revocation_before_rejecting()
             raise RevokedRefreshTokenError("Refresh token reuse detected")
 
         stored_token.assert_usable(now)
@@ -86,6 +92,7 @@ class RefreshSessionUseCase:
             stored_token.revoke(now, RefreshTokenRevokeReason.ORGANIZATION_SUSPENDED)
             self._refresh_token_repository.update(stored_token)
             self._revoke_session_if_active(stored_token.session_id, now)
+            self._persist_revocation_before_rejecting()
             raise InvalidRefreshTokenError("Invalid refresh token")
 
         stored_token.mark_used(now)
@@ -103,6 +110,10 @@ class RefreshSessionUseCase:
             rotated_from=stored_token.id,
             client=client,
         )
+
+    def _persist_revocation_before_rejecting(self) -> None:
+        if self._persist_revocation is not None:
+            self._persist_revocation()
 
     def _revoke_session_if_active(self, session_id: SessionId, now: datetime) -> None:
         session = self._session_repository.get_by_id(session_id)

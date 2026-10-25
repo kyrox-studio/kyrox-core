@@ -35,12 +35,16 @@ class JwtTokenService:
             token.value,
             self._secret_key,
             algorithms=[self._algorithm],
+            options={"require": ["sub", "email", "sid", "exp", "iat", "jti"]},
         )
-        return AccessTokenClaims(
-            sub=UserId(UUID(payload["sub"])),
-            email=Email(value=payload["email"]),
-            sid=SessionId(UUID(payload["sid"])),
-            exp=datetime.fromtimestamp(payload["exp"], tz=UTC),
-            iat=datetime.fromtimestamp(payload["iat"], tz=UTC),
-            jti=UUID(payload["jti"]),
-        )
+        try:
+            return AccessTokenClaims(
+                sub=UserId(UUID(payload["sub"])),
+                email=Email(value=payload["email"]),
+                sid=SessionId(UUID(payload["sid"])),
+                exp=datetime.fromtimestamp(payload["exp"], tz=UTC),
+                iat=datetime.fromtimestamp(payload["iat"], tz=UTC),
+                jti=UUID(payload["jti"]),
+            )
+        except (KeyError, TypeError, AttributeError, OverflowError, OSError) as exc:
+            raise jwt.InvalidTokenError("Malformed access token claims") from exc

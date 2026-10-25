@@ -75,4 +75,5 @@ def get_lifecycle_aware_refresh_session_use_case(
         token_pair_issuer=token_pair_issuer,
         clock=clock,
         organization_repository=SqlAlchemyOrganizationRepository(db, clock),
+        persist_revocation=db.commit,
     )
