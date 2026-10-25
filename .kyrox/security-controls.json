@@ -1,0 +1,152 @@
+{
+  "version": 1,
+  "project": "kyrox-core",
+  "source": "kyrox-platform/standards/security/SECURITY_PROGRAM.md",
+  "surfaces": [
+    "backend/app/api",
+    "backend/app/core",
+    "backend/app/db",
+    "backend/app/main.py",
+    "backend/app/modules/audit",
+    "backend/app/modules/identity",
+    "backend/app/modules/jobs",
+    "backend/app/modules/notifications",
+    "backend/app/modules/settings"
+  ],
+  "controls": {
+    "SEC-01": {
+      "status": "required",
+      "tests": [
+        "backend/tests/modules/identity/test_authorization_guards.py::test_guard_rejects_missing_permission",
+        "backend/tests/modules/identity/test_authorization_guards.py::test_guard_allows_authorized_request",
+        "backend/tests/modules/identity/authorization/test_authorization_check_api_routes.py::test_normal_user_cannot_self_assert_super_admin_for_foreign_scope",
+        "backend/tests/modules/identity/authentication/test_core09_security_certification.py::test_public_signup_cannot_self_assert_super_admin_or_inject_role"
+      ]
+    },
+    "SEC-02": {
+      "status": "required",
+      "tests": [
+        "backend/tests/modules/jobs/test_jobs_api_routes.py::test_get_job_masks_other_organization",
+        "backend/tests/modules/notifications/test_notifications_api_routes.py::test_get_notification_masks_other_organization",
+        "backend/tests/modules/settings/test_settings_api_routes_org.py::test_organization_settings_do_not_leak_across_orgs",
+        "backend/tests/modules/identity/organization/test_organization_api_routes.py::test_organization_user_cannot_spoof_another_organization_for_lifecycle_actions",
+        "backend/tests/modules/identity/authentication/test_core09_security_certification.py::test_activation_token_for_org_a_cannot_mutate_org_b"
+      ]
+    },
+    "SEC-03": {
+      "status": "required",
+      "tests": [
+        "backend/tests/modules/identity/test_authorization_guards.py::test_guard_rejects_invalid_bearer_token",
+        "backend/tests/modules/identity/test_authorization_guards.py::test_guard_rejects_access_token_after_session_revocation",
+        "backend/tests/modules/identity/authentication/test_application_use_cases.py::test_refresh_detects_reuse_of_rotated_token",
+        "backend/tests/modules/identity/authentication/test_application_use_cases.py::test_login_rejects_inactive_user",
+        "backend/tests/modules/identity/authentication/test_identity_action_tokens.py::test_replay_is_rejected_after_first_successful_consume",
+        "backend/tests/modules/identity/authentication/test_password_recovery_edge_cases.py::test_password_reset_rejects_expired_token"
+      ]
+    },
+    "SEC-04": {
+      "status": "required",
+      "tests": [
+        "backend/tests/modules/identity/authentication/test_identity_action_tokens.py::test_raw_token_is_not_logged_by_issue_or_consume",
+        "backend/tests/modules/identity/authentication/test_password_policy.py::test_password_policy_error_never_echoes_password"
+      ],
+      "gap": "No repository secret scanning step in Core CI; rotation/revocation path for JWT signing key not evidenced."
+    },
+    "SEC-05": {
+      "status": "required",
+      "tests": [],
+      "gap": "Application/migration/backup database role scopes and network exposure are deployment configuration; no repository test or masked live evidence yet."
+    },
+    "SEC-06": {
+      "status": "required",
+      "tests": [],
+      "gap": "No injection negative tests. Source check 2026-10-25 found no raw text()/f-string SQL or shell calls in backend/app; dynamic sort/filter inputs not yet inventoried."
+    },
+    "SEC-07": {
+      "status": "na",
+      "reason": "Core exposes no file upload or import endpoint: no UploadFile/File parameters in backend/app (source check 2026-10-25). Reopen when an upload surface is added."
+    },
+    "SEC-08": {
+      "status": "required",
+      "tests": [
+        "backend/tests/modules/identity/organization/test_organization_value_objects.py::test_organization_slug_rejects_invalid_value",
+        "backend/tests/modules/identity/test_user_management_password_policy.py::test_manual_user_password_hash_rejects_oversized_password",
+        "backend/tests/modules/jobs/test_job_policy.py::test_policy_rejects_invalid_idempotency_key",
+        "backend/tests/modules/audit/test_service.py::test_audit_service_rejects_invalid_action_format"
+      ]
+    },
+    "SEC-09": {
+      "status": "required",
+      "tests": [],
+      "gap": "Core CI has no dependency audit step (pip-audit or equivalent); requirements.txt risk is not tracked automatically."
+    },
+    "SEC-10": {
+      "status": "required",
+      "tests": [],
+      "gap": "Core workflow has no explicit permissions block; ruff step silently skips when ruff is not installed; required checks and branch protection not verified."
+    },
+    "SEC-11": {
+      "status": "required",
+      "tests": [],
+      "gap": "SMTP adapter defaults to STARTTLS but has no test; FAIR_CRM_BASE_URL lifecycle call does not enforce https; live TLS not verified."
+    },
+    "SEC-12": {
+      "status": "required",
+      "tests": [],
+      "gap": "Core database backup and isolated restore evidence missing; backup scripts live in fair-crm operations (E-007)."
+    },
+    "SEC-13": {
+      "status": "required",
+      "tests": [
+        "backend/tests/modules/audit/test_service.py::test_audit_service_records_event_through_repository",
+        "backend/tests/modules/identity/authentication/test_activation.py::test_activation_api_is_single_use_audited_secret_safe_and_login_ready"
+      ]
+    },
+    "SEC-14": {
+      "status": "na",
+      "reason": "Core API returns JSON only (no HTMLResponse) and the SMTP adapter sends plain-text bodies via EmailMessage.set_content; no user content is rendered as HTML."
+    },
+    "SEC-15": {
+      "status": "na",
+      "reason": "Core sets and reads no cookies: no set_cookie or Cookie parameters in backend/app (source check 2026-10-25). Reopen if a cookie session is added."
+    },
+    "SEC-16": {
+      "status": "required",
+      "tests": [],
+      "gap": "No login/reset/signup rate limit or lockout in Core code (source check 2026-10-25); whether an upstream proxy limits these routes is unverified."
+    },
+    "SEC-17": {
+      "status": "required",
+      "tests": [],
+      "gap": "Core sets no security headers itself; proxy-level HSTS/nosniff/frame-ancestors not verified."
+    },
+    "SEC-18": {
+      "status": "na",
+      "reason": "No CORSMiddleware is installed, so browsers receive no cross-origin allowance from Core; reopen if CORS is configured in the app or proxy."
+    },
+    "SEC-19": {
+      "status": "na",
+      "reason": "Authentication is bearer-token only with no cookie session, so a cross-site request cannot carry Core credentials automatically."
+    },
+    "SEC-20": {
+      "status": "required",
+      "tests": [
+        "backend/tests/modules/identity/authorization/test_authorization_check_api_routes.py::test_check_permission_nested_admin_code_does_not_return_500",
+        "backend/tests/modules/identity/test_user_management_password_policy.py::test_manual_user_password_hash_rejects_short_password_without_echoing_secret"
+      ]
+    },
+    "SEC-21": {
+      "status": "na",
+      "reason": "Outbound targets come only from deployment settings (FAIR_CRM_BASE_URL, CORE_SMTP_HOST); no request-supplied URL or host is fetched by the server."
+    },
+    "SEC-22": {
+      "status": "required",
+      "tests": [
+        "backend/tests/modules/jobs/test_jobs_use_cases.py::test_enqueue_job_rejects_conflicting_idempotency_payload",
+        "backend/tests/modules/jobs/test_jobs_use_cases.py::test_get_job_use_case_masks_other_org",
+        "backend/tests/modules/jobs/test_fair_crm_lifecycle_signal_handler.py::test_handler_keeps_non_200_delivery_retryable_via_exception",
+        "backend/tests/modules/identity/organization/test_conditional_organization_tombstone.py::test_conditional_tombstone_rejects_stale_suspension_episode_without_mutation"
+      ]
+    }
+  }
+}
