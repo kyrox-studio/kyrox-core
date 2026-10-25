@@ -79,6 +79,29 @@ def _hash_password(password: str) -> str:
     return Argon2idPasswordHasher().hash(password).value
 
 
+def _assert_not_last_active_super_admin(db: Session, user: UserModel) -> None:
+    """ADR-0003: the last active, non-deleted Super Admin cannot be removed.
+
+    The database trigger trg_identity_users_protect_last_super_admin enforces
+    the same invariant under concurrency; this check returns a clear 409.
+    """
+    if not (user.is_super_admin and user.status == "active" and user.deleted_at is None):
+        return
+    other_active = db.scalars(
+        select(UserModel.id).where(
+            UserModel.id != user.id,
+            UserModel.is_super_admin.is_(True),
+            UserModel.status == "active",
+            UserModel.deleted_at.is_(None),
+        )
+    ).first()
+    if other_active is None:
+        raise AppException(
+            "Cannot remove, demote, suspend, or delete the last active Super Admin",
+            status_code=status.HTTP_409_CONFLICT,
+        )
+
+
 def _actor_is_super_admin(db: Session, user_id: UUID) -> bool:
     actor = db.get(UserModel, user_id)
     return bool(actor and actor.deleted_at is None and actor.status == "active" and actor.is_super_admin)
@@ -486,6 +509,10 @@ def update_user(
                 "A role is required when removing Super Admin access",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
+    if (payload.is_super_admin is False and was_super_admin) or (
+        payload.status is not None and payload.status.value != "active"
+    ):
+        _assert_not_last_active_super_admin(db, user)
 
     if payload.email is not None:
         email = payload.email.strip().lower()
@@ -573,6 +600,7 @@ def delete_user(
             )
     elif user.organization_id != organization_id:
         raise AppException("User not found in this organization", status_code=status.HTTP_404_NOT_FOUND)
+    _assert_not_last_active_super_admin(db, user)
 
     now = _now()
     for item in db.scalars(

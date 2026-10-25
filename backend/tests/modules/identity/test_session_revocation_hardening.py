@@ -1,4 +1,5 @@
-"""Session revocation regressions (SECURITY_PROGRAM F-C3, F-C4, F-C4b, F-C10).
+"""Session revocation regressions (SECURITY_PROGRAM F-C3, F-C4, F-C4b, F-C10)
+and the ADR-0003 last-active-Super-Admin invariant at the API layer (F-C9).
 
 The database override mirrors production ``get_db`` (commit on success,
 rollback on error) so revocations written on rejected requests are observable.
@@ -330,6 +331,40 @@ def test_removed_super_admin_old_token_loses_bypass(world: World, action: str) -
         ).status_code
         == 401
     )
+
+
+@pytest.mark.parametrize("action", ["deactivate", "delete", "demote"])
+def test_last_active_super_admin_cannot_remove_itself(world: World, action: str) -> None:
+    actor_token = _login(world, "sa1@revocation-audit.com")["access_token"]
+    removed = world.client.delete(
+        f"/api/v1/organizations/{world.org_a}/users/{world.second_super_admin}",
+        headers=_headers(actor_token, world.org_a),
+    )
+    assert removed.status_code == 204, removed.text
+    path = f"/api/v1/organizations/{world.org_a}/users/{world.super_admin}"
+
+    if action == "deactivate":
+        response = world.client.patch(path, json={"status": "inactive"}, headers=_headers(actor_token, world.org_a))
+    elif action == "delete":
+        response = world.client.delete(path, headers=_headers(actor_token, world.org_a))
+    else:
+        with world.session_factory() as db:
+            admin_role_id = db.scalar(select(RoleModel.id).where(RoleModel.slug == "organization_admin"))
+        response = world.client.patch(
+            path,
+            json={"is_super_admin": False, "role_id": str(admin_role_id)},
+            headers=_headers(actor_token, world.org_a),
+        )
+
+    assert response.status_code == 409, response.text
+    with world.session_factory() as db:
+        last = db.get(UserModel, world.super_admin)
+        assert last is not None
+        assert last.is_super_admin is True
+        assert last.status == "active"
+        assert last.deleted_at is None
+    assert len(_active_sessions(world, world.super_admin)) == 1
+    assert world.client.get("/api/v1/system/settings", headers=_headers(actor_token)).status_code == 200
 
 
 @pytest.mark.parametrize("claim", ["exp", "iat", "sid", "jti", "email"])
