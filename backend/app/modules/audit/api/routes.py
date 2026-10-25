@@ -196,6 +196,7 @@ def record_organization_audit_event(
         401: {"model": ErrorResponse},
         404: {"model": ErrorResponse},
         409: {"model": ErrorResponse},
+        503: {"model": ErrorResponse},
     },
 )
 def purge_retained_organization_audit_evidence(

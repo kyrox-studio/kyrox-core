@@ -25,8 +25,9 @@ class Settings(BaseSettings):
 
     # Purpose-separated read-only credential for product background workers to
     # query canonical organization lifecycle eligibility. Never reuse user JWTs
-    # or provider credentials for this contract.
-    CORE_PRODUCT_LIFECYCLE_TOKEN: str = "dev-insecure-product-lifecycle-token-change-me"
+    # or provider credentials for this contract. No default secret is accepted:
+    # unset, short or dev-insecure values make the endpoints fail closed (503).
+    CORE_PRODUCT_LIFECYCLE_TOKEN: str | None = None
     # Purpose-separated product worker -> platform in-app delivery credential.
     CORE_PRODUCT_NOTIFICATION_TOKEN: str | None = None
 

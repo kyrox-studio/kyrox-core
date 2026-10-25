@@ -48,9 +48,12 @@
       "status": "required",
       "tests": [
         "backend/tests/modules/identity/authentication/test_identity_action_tokens.py::test_raw_token_is_not_logged_by_issue_or_consume",
-        "backend/tests/modules/identity/authentication/test_password_policy.py::test_password_policy_error_never_echoes_password"
+        "backend/tests/modules/identity/authentication/test_password_policy.py::test_password_policy_error_never_echoes_password",
+        "backend/tests/modules/identity/organization/test_product_lifecycle_contract.py::test_product_lifecycle_settings_have_no_default_secret",
+        "backend/tests/modules/identity/organization/test_product_lifecycle_contract.py::test_product_lifecycle_snapshot_fails_closed_without_secure_credential",
+        "backend/tests/modules/audit/test_ol08_f_retention.py::test_retention_purge_fails_closed_without_secure_credential"
       ],
-      "gap": "No repository secret scanning step in Core CI; rotation/revocation path for JWT signing key not evidenced."
+      "gap": "No repository secret scanning step in Core CI; rotation/revocation path for JWT signing key not evidenced; JWT_SECRET_KEY and CORE_IDENTITY_ACTION_TOKEN_SECRET_KEY still have public dev-insecure defaults with no startup guard; HS256 signing key is shared with FAIR CRM and Fair Stand (SECURITY_PROGRAM F-C5/F-C8)."
     },
     "SEC-05": {
       "status": "required",

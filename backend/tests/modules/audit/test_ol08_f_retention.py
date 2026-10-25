@@ -20,6 +20,14 @@ from app.modules.identity.api.authentication.dependencies import get_clock
 from app.modules.identity.infrastructure.organization.persistence.models.organization import OrganizationModel
 
 
+CONFIGURED_LIFECYCLE_TOKEN = "lifecycle-test-credential-" + "r" * 32
+
+
+@pytest.fixture(autouse=True)
+def _configured_lifecycle_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "CORE_PRODUCT_LIFECYCLE_TOKEN", CONFIGURED_LIFECYCLE_TOKEN)
+
+
 class FixedClock:
     def __init__(self, now: datetime) -> None:
         self.value = now
@@ -124,6 +132,36 @@ def test_retention_purge_requires_product_lifecycle_credential(
     wrong = _headers()
     wrong["X-Kyrox-Product-Lifecycle-Token"] = "wrong"
     assert client.post(path, headers=wrong).status_code == 401
+    assert _count(db_session, organization_id) == 1
+
+
+@pytest.mark.parametrize(
+    "configured",
+    [
+        None,
+        "",
+        "short-lifecycle-token",
+        "dev-insecure-product-lifecycle-token-change-me",
+    ],
+)
+def test_retention_purge_fails_closed_without_secure_credential(
+    client: TestClient,
+    db_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    configured: str | None,
+) -> None:
+    deleted_at = datetime(2025, 1, 1, tzinfo=UTC)
+    organization_id = _seed_deleted_organization(db_session, deleted_at=deleted_at)
+    _seed_audit(db_session, organization_id, action="identity.organization.deleted")
+    _set_clock(client, datetime(2026, 1, 1, tzinfo=UTC))
+    monkeypatch.setattr(settings, "CORE_PRODUCT_LIFECYCLE_TOKEN", configured)
+
+    path = f"/api/v1/organizations/{organization_id}/retained-audit-evidence/purge"
+    headers = _headers()
+    headers["X-Kyrox-Product-Lifecycle-Token"] = "dev-insecure-product-lifecycle-token-change-me"
+
+    assert client.post(path, headers=headers).status_code == 503
+    assert client.post(path).status_code == 503
     assert _count(db_session, organization_id) == 1
 
 
