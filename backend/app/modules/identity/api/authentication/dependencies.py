@@ -386,6 +386,7 @@ def get_login_use_case(
 
 
 def get_refresh_session_use_case(
+    db: DbSession = Depends(get_db),
     user_repository: UserRepository = Depends(get_user_repository),
     session_repository: SessionRepository = Depends(get_session_repository),
     refresh_token_repository: RefreshTokenRepository = Depends(get_refresh_token_repository),
@@ -400,6 +401,7 @@ def get_refresh_session_use_case(
         refresh_token_service=refresh_token_service,
         token_pair_issuer=token_pair_issuer,
         clock=clock,
+        persist_revocation=db.commit,
     )
 
 

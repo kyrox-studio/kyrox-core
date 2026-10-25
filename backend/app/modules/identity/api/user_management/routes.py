@@ -7,6 +7,11 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppException
 from app.db.session import get_db
+from app.modules.identity.api.authentication.dependencies import (
+    get_clock,
+    get_refresh_token_repository,
+    get_session_repository,
+)
 from app.modules.identity.api.authorization.context import AuthorizationContext
 from app.modules.identity.api.authorization.guards import get_access_token_claims, require_permission
 from app.modules.identity.api.authorization.scope import assert_organization_scope
@@ -24,6 +29,15 @@ from app.modules.identity.application.authentication.password_policy import (
     DEFAULT_PASSWORD_POLICY,
     PasswordPolicyViolation,
 )
+from app.modules.identity.application.authentication.revoke_all_user_sessions import (
+    RevokeAllUserSessionsUseCase,
+)
+from app.modules.identity.domain.authentication.ports.clock import Clock
+from app.modules.identity.domain.authentication.ports.refresh_token_repository import (
+    RefreshTokenRepository,
+)
+from app.modules.identity.domain.authentication.ports.session_repository import SessionRepository
+from app.modules.identity.domain.authentication.value_objects.identity.user_id import UserId
 from app.modules.identity.domain.authentication.value_objects.security.access_token import AccessTokenClaims
 from app.modules.identity.infrastructure.authentication.security import Argon2idPasswordHasher
 from app.modules.identity.infrastructure.authorization.persistence.models import (
@@ -40,6 +54,18 @@ router = APIRouter(tags=["user-management"])
 
 def _now() -> datetime:
     return datetime.now(tz=UTC)
+
+
+def get_revoke_all_user_sessions_use_case(
+    session_repository: SessionRepository = Depends(get_session_repository),
+    refresh_token_repository: RefreshTokenRepository = Depends(get_refresh_token_repository),
+    clock: Clock = Depends(get_clock),
+) -> RevokeAllUserSessionsUseCase:
+    return RevokeAllUserSessionsUseCase(
+        session_repository=session_repository,
+        refresh_token_repository=refresh_token_repository,
+        clock=clock,
+    )
 
 
 def _hash_password(password: str) -> str:
@@ -431,6 +457,9 @@ def update_user(
     payload: ManualUserUpdateRequest,
     context: AuthorizationContext = Depends(require_permission("identity.users.update")),
     db: Session = Depends(get_db),
+    revoke_all_user_sessions: RevokeAllUserSessionsUseCase = Depends(
+        get_revoke_all_user_sessions_use_case
+    ),
 ) -> ManagedUserResponse:
     assert_organization_scope(organization_id, context)
     user = db.get(UserModel, user_id)
@@ -439,6 +468,9 @@ def update_user(
 
     actor_is_super = _actor_is_super_admin(db, context.user_id)
     was_super_admin = user.is_super_admin
+    previous_email = user.email
+    previous_status = user.status
+    previous_organization_id = user.organization_id
 
     if not was_super_admin and user.organization_id != organization_id:
         raise AppException("User not found in this organization", status_code=status.HTTP_404_NOT_FOUND)
@@ -494,6 +526,18 @@ def update_user(
 
     user.updated_at = _now()
     db.flush()
+
+    # Credential, identity, access-state or privilege reductions invalidate every
+    # existing session, matching self-service password change and reset.
+    if (
+        payload.password is not None
+        or user.email != previous_email
+        or (user.status != "active" and user.status != previous_status)
+        or (was_super_admin and not user.is_super_admin)
+        or user.organization_id != previous_organization_id
+    ):
+        revoke_all_user_sessions.execute(UserId(user.id))
+        db.flush()
     return _to_response(db, organization_id, user, expose_super_admin=actor_is_super)
 
 
@@ -511,6 +555,9 @@ def delete_user(
     user_id: UUID,
     context: AuthorizationContext = Depends(require_permission("identity.users.delete")),
     db: Session = Depends(get_db),
+    revoke_all_user_sessions: RevokeAllUserSessionsUseCase = Depends(
+        get_revoke_all_user_sessions_use_case
+    ),
 ) -> Response:
     assert_organization_scope(organization_id, context)
     user = db.get(UserModel, user_id)
@@ -541,5 +588,7 @@ def delete_user(
     user.deleted_at = now
     user.status = "inactive"
     user.updated_at = now
+    db.flush()
+    revoke_all_user_sessions.execute(UserId(user.id))
     db.flush()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

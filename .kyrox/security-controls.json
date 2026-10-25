@@ -20,8 +20,10 @@
         "backend/tests/modules/identity/test_authorization_guards.py::test_guard_rejects_missing_permission",
         "backend/tests/modules/identity/test_authorization_guards.py::test_guard_allows_authorized_request",
         "backend/tests/modules/identity/authorization/test_authorization_check_api_routes.py::test_normal_user_cannot_self_assert_super_admin_for_foreign_scope",
-        "backend/tests/modules/identity/authentication/test_core09_security_certification.py::test_public_signup_cannot_self_assert_super_admin_or_inject_role"
-      ]
+        "backend/tests/modules/identity/authentication/test_core09_security_certification.py::test_public_signup_cannot_self_assert_super_admin_or_inject_role",
+        "backend/tests/modules/identity/test_session_revocation_hardening.py::test_removed_super_admin_old_token_loses_bypass"
+      ],
+      "gap": "Holders of identity.users.update can change password/email/status of users with protected roles (OrganizationAdmin); holders of identity.roles.update can add permissions they do not hold to their own role; identity.roles.assign is not enforced on user create/update (SECURITY_PROGRAM F-C1, F-C2; product decision pending)."
     },
     "SEC-02": {
       "status": "required",
@@ -41,8 +43,13 @@
         "backend/tests/modules/identity/authentication/test_application_use_cases.py::test_refresh_detects_reuse_of_rotated_token",
         "backend/tests/modules/identity/authentication/test_application_use_cases.py::test_login_rejects_inactive_user",
         "backend/tests/modules/identity/authentication/test_identity_action_tokens.py::test_replay_is_rejected_after_first_successful_consume",
-        "backend/tests/modules/identity/authentication/test_password_recovery_edge_cases.py::test_password_reset_rejects_expired_token"
-      ]
+        "backend/tests/modules/identity/authentication/test_password_recovery_edge_cases.py::test_password_reset_rejects_expired_token",
+        "backend/tests/modules/identity/test_session_revocation_hardening.py::test_refresh_reuse_revokes_session_and_rotated_pair",
+        "backend/tests/modules/identity/test_session_revocation_hardening.py::test_admin_user_change_revokes_existing_sessions",
+        "backend/tests/modules/identity/test_session_revocation_hardening.py::test_admin_user_delete_revokes_existing_sessions",
+        "backend/tests/modules/identity/test_session_revocation_hardening.py::test_validly_signed_token_with_missing_claim_is_401"
+      ],
+      "gap": "Access token TTL is 15 days while ADR-0003 states 15 minutes and sessions have no absolute/idle expiry; login revokes all other sessions although ADR-0003 lists multi-device support; login/signup responses enumerate accounts (SECURITY_PROGRAM R-2, F-C6)."
     },
     "SEC-04": {
       "status": "required",
