@@ -21,7 +21,8 @@
         "backend/tests/modules/identity/test_authorization_guards.py::test_guard_allows_authorized_request",
         "backend/tests/modules/identity/authorization/test_authorization_check_api_routes.py::test_normal_user_cannot_self_assert_super_admin_for_foreign_scope",
         "backend/tests/modules/identity/authentication/test_core09_security_certification.py::test_public_signup_cannot_self_assert_super_admin_or_inject_role",
-        "backend/tests/modules/identity/test_session_revocation_hardening.py::test_removed_super_admin_old_token_loses_bypass"
+        "backend/tests/modules/identity/test_session_revocation_hardening.py::test_removed_super_admin_old_token_loses_bypass",
+        "backend/tests/modules/identity/test_session_revocation_hardening.py::test_last_active_super_admin_cannot_remove_itself"
       ],
       "gap": "Holders of identity.users.update can change password/email/status of users with protected roles (OrganizationAdmin); holders of identity.roles.update can add permissions they do not hold to their own role; identity.roles.assign is not enforced on user create/update (SECURITY_PROGRAM F-C1, F-C2; product decision pending)."
     },
