@@ -8,10 +8,13 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppException
 from app.db.session import get_db
-from app.modules.audit.infrastructure.persistence.models import AuditLogModel
 from app.modules.identity.api.authorization.context import AuthorizationContext
 from app.modules.identity.api.authorization.guards import require_permission, require_super_admin
 from app.modules.identity.api.authorization.scope import assert_organization_scope
+from app.modules.identity.api.role_management.privilege import (
+    assert_can_edit_role_permissions,
+    assert_can_grant_permissions,
+)
 from app.modules.identity.api.role_management.schemas import (
     DeriveRoleRequest,
     PermissionLifecyclePreviewResponse,
@@ -24,6 +27,7 @@ from app.modules.identity.api.role_management.schemas import (
     TemplateSyncPreviewResponse,
     TemplateSyncRequest,
 )
+from app.modules.identity.api.user_management.audit import record_identity_event
 from app.modules.identity.domain.authentication.value_objects.security.access_token import AccessTokenClaims
 from app.modules.identity.infrastructure.authorization.persistence.models import (
     PermissionModel,
@@ -41,6 +45,7 @@ def _audit(
     db: Session,
     *,
     actor_id: UUID,
+    session_id: UUID | None,
     action: str,
     resource_type: str,
     resource_id: UUID,
@@ -48,17 +53,47 @@ def _audit(
     old_values: dict | None = None,
     new_values: dict | None = None,
 ) -> None:
-    db.add(AuditLogModel(
-        organization_id=organization_id,
-        user_id=actor_id,
-        session_id=None,
+    """ADR-0004 ``identity.<resource>.<verb>`` events through the audit service (F-C13)."""
+    record_identity_event(
+        db,
+        actor_id=actor_id,
+        session_id=session_id,
         action=action,
         resource_type=resource_type,
-        resource_id=str(resource_id),
+        resource_id=resource_id,
+        organization_id=organization_id,
         old_values=old_values,
         new_values=new_values,
-        event_metadata={"source": "role_management"},
-    ))
+        metadata={"source": "role_management"},
+    )
+
+
+def _audit_permission_changes(
+    db: Session,
+    context: AuthorizationContext,
+    *,
+    role: RoleModel,
+    organization_id: UUID,
+    old_ids: set[UUID],
+    new_ids: set[UUID],
+) -> None:
+    granted = sorted(str(item) for item in new_ids - old_ids)
+    revoked = sorted(str(item) for item in old_ids - new_ids)
+    for action, ids in (
+        ("identity.permission.granted", granted),
+        ("identity.permission.revoked", revoked),
+    ):
+        if ids:
+            _audit(
+                db,
+                actor_id=context.user_id,
+                session_id=context.session_id,
+                action=action,
+                resource_type="role",
+                resource_id=role.id,
+                organization_id=organization_id,
+                new_values={"permission_ids": ids},
+            )
 
 
 def _permission_ids(db: Session, role_id: UUID) -> list[UUID]:
@@ -183,7 +218,7 @@ def update_template(
     old_permission_ids = [str(item) for item in _permission_ids(db, role.id)]
     _replace_permissions(db, role, permissions, customized=False)
     role.template_version += 1
-    _audit(db, actor_id=claims.sub.value, action="role_template.update", resource_type="role_template", resource_id=role.id, old_values={"permission_ids": old_permission_ids}, new_values={"permission_ids": [str(item.id) for item in permissions], "version": role.template_version})
+    _audit(db, actor_id=claims.sub.value, session_id=claims.sid.value, action="identity.role_template.updated", resource_type="role_template", resource_id=role.id, old_values={"permission_ids": old_permission_ids}, new_values={"permission_ids": [str(item.id) for item in permissions], "version": role.template_version})
     db.flush()
     return _role_response(db, role)
 
@@ -213,7 +248,7 @@ def derive_template(
         raise AppException("Role slug already exists in organization", status_code=status.HTTP_409_CONFLICT) from exc
     permissions = _permissions_for_propagation(db, _permission_ids(db, template.id), allow_restricted=True)
     _replace_permissions(db, role, permissions, customized=False)
-    _audit(db, actor_id=claims.sub.value, action="role_template.derive", resource_type="role", resource_id=role.id, organization_id=payload.organization_id, new_values={"source_template_role_id": str(template.id), "permission_count": len(permissions)})
+    _audit(db, actor_id=claims.sub.value, session_id=claims.sid.value, action="identity.role_template.derived", resource_type="role", resource_id=role.id, organization_id=payload.organization_id, new_values={"source_template_role_id": str(template.id), "permission_count": len(permissions)})
     return _role_response(db, role)
 
 
@@ -262,7 +297,7 @@ def sync_template(
         _replace_permissions(db, role, permissions, customized=False)
         role.source_template_version = template.template_version
         db.execute(delete(RoleTemplateExclusionModel).where(RoleTemplateExclusionModel.role_id == role.id))
-        _audit(db, actor_id=claims.sub.value, action="role_template.sync", resource_type="role", resource_id=role.id, organization_id=role.organization_id, old_values={"permission_count": previous_count}, new_values={"permission_count": len(permissions), "source_template_version": template.template_version})
+        _audit(db, actor_id=claims.sub.value, session_id=claims.sid.value, action="identity.role_template.synced", resource_type="role", resource_id=role.id, organization_id=role.organization_id, old_values={"permission_count": previous_count}, new_values={"permission_count": len(permissions), "source_template_version": template.template_version})
     db.flush()
     return [_role_response(db, role) for role in targets]
 
@@ -276,6 +311,8 @@ def create_organization_role(
 ) -> RoleResponse:
     assert_organization_scope(organization_id, context)
     permissions = _validated_permissions(db, payload.permission_ids, allow_restricted=context.is_super_admin)
+    # F-C2: no escalation - a role can only receive permissions the actor holds.
+    assert_can_grant_permissions(db, context, [item.id for item in permissions])
     role = RoleModel(
         name=payload.name.strip(), slug=payload.slug, scope="organization", is_system=False,
         role_kind="organization", organization_id=organization_id, template_version=1,
@@ -288,7 +325,8 @@ def create_organization_role(
     except IntegrityError as exc:
         raise AppException("Role slug already exists in organization", status_code=status.HTTP_409_CONFLICT) from exc
     _replace_permissions(db, role, permissions, customized=True)
-    _audit(db, actor_id=context.user_id, action="role.create", resource_type="role", resource_id=role.id, organization_id=organization_id, new_values={"name": role.name, "slug": role.slug, "permission_count": len(permissions)})
+    _audit(db, actor_id=context.user_id, session_id=context.session_id, action="identity.role.created", resource_type="role", resource_id=role.id, organization_id=organization_id, new_values={"name": role.name, "slug": role.slug, "permission_count": len(permissions)})
+    _audit_permission_changes(db, context, role=role, organization_id=organization_id, old_ids=set(), new_ids={item.id for item in permissions})
     return _role_response(db, role)
 
 
@@ -360,7 +398,7 @@ def update_organization_role(
         db.flush()
     except IntegrityError as exc:
         raise AppException("Role slug already exists in organization", status_code=status.HTTP_409_CONFLICT) from exc
-    _audit(db, actor_id=context.user_id, action="role.update", resource_type="role", resource_id=role.id, organization_id=organization_id, new_values={"name": role.name, "slug": role.slug})
+    _audit(db, actor_id=context.user_id, session_id=context.session_id, action="identity.role.updated", resource_type="role", resource_id=role.id, organization_id=organization_id, new_values={"name": role.name, "slug": role.slug})
     return _role_response(db, role)
 
 
@@ -375,6 +413,10 @@ def update_organization_role_permissions(
     assert_organization_scope(organization_id, context)
     role = _get_org_role(db, organization_id, role_id)
     permissions = _validated_permissions(db, payload.permission_ids, allow_restricted=context.is_super_admin)
+    # F-C2: the actor can neither grant a permission it lacks nor reshape a role
+    # that already holds permissions it lacks (no escalation, own role included).
+    assert_can_edit_role_permissions(db, context, role)
+    assert_can_grant_permissions(db, context, [item.id for item in permissions])
     old_ids = set(_permission_ids(db, role.id))
     _replace_permissions(db, role, permissions, customized=True)
     if role.source_template_role_id:
@@ -395,7 +437,7 @@ def update_organization_role_permissions(
         for permission_id in template_ids - set(payload.permission_ids) - locked_kept_ids:
             db.add(RoleTemplateExclusionModel(role_id=role.id, permission_id=permission_id))
     db.flush()
-    _audit(db, actor_id=context.user_id, action="role.permissions.update", resource_type="role", resource_id=role.id, organization_id=organization_id, old_values={"permission_ids": [str(item) for item in old_ids]}, new_values={"permission_ids": [str(item.id) for item in permissions]})
+    _audit_permission_changes(db, context, role=role, organization_id=organization_id, old_ids=old_ids, new_ids=set(_permission_ids(db, role.id)))
     return _role_response(db, role)
 
 
@@ -412,7 +454,7 @@ def delete_organization_role(
         raise AppException("Role is assigned to active users", status_code=status.HTTP_409_CONFLICT)
     role.deleted_at = datetime.now(tz=UTC)
     role.is_assignable = False
-    _audit(db, actor_id=context.user_id, action="role.delete", resource_type="role", resource_id=role.id, organization_id=organization_id, old_values={"name": role.name, "slug": role.slug})
+    _audit(db, actor_id=context.user_id, session_id=context.session_id, action="identity.role.deleted", resource_type="role", resource_id=role.id, organization_id=organization_id, old_values={"name": role.name, "slug": role.slug})
     db.flush()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -467,6 +509,6 @@ def update_permission_lifecycle(
     # Lock suspends authorization only (grants kept). Inactive strips role grants permanently.
     if payload.state == "inactive":
         db.execute(delete(RolePermissionModel).where(RolePermissionModel.permission_id == permission.id))
-    _audit(db, actor_id=claims.sub.value, action="permission.lifecycle.update", resource_type="permission", resource_id=permission.id, old_values={"state": old_state}, new_values={"state": payload.state, "reason": payload.reason})
+    _audit(db, actor_id=claims.sub.value, session_id=claims.sid.value, action="identity.permission.lifecycle_changed", resource_type="permission", resource_id=permission.id, old_values={"state": old_state}, new_values={"state": payload.state, "reason": payload.reason})
     db.flush()
     return preview

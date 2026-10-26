@@ -29,6 +29,9 @@ class UserModel(BaseModelMixin, Base):
 from app.modules.identity.infrastructure.authentication.persistence.models.identity_action_token import (
     IdentityActionTokenModel,
 )
+from app.modules.identity.infrastructure.authentication.persistence.models.login_throttle import (
+    LoginThrottleModel,
+)
 from app.modules.identity.infrastructure.authentication.persistence.models.refresh_token import (
     RefreshTokenModel,
 )

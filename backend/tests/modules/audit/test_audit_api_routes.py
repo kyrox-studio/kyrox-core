@@ -53,8 +53,11 @@ def test_list_organization_audit_logs_requires_permission(
 
     assert response.status_code == 200, response.text
     body = response.json()
-    assert len(body["items"]) == 1
-    assert body["items"][0]["action"] == "identity.organization.create"
+    # The reader's own sign-in is audited too (F-C13); newest first.
+    assert [item["action"] for item in body["items"]] == [
+        "identity.user.login",
+        "identity.organization.create",
+    ]
 
 
 def test_list_organization_audit_logs_scope_mismatch_returns_400(

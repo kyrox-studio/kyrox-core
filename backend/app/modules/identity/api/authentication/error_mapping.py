@@ -5,6 +5,7 @@ from app.modules.identity.domain.authentication.exceptions import (
     InvalidCredentialsError,
     InvalidRefreshTokenError,
     LockedUserError,
+    LoginThrottledError,
 )
 from app.modules.identity.domain.authentication.exceptions.authentication import (
     ActivationPasswordPolicyError,
@@ -21,7 +22,13 @@ from app.modules.identity.domain.authentication.exceptions.authentication import
 )
 
 
+LOGIN_THROTTLED_MESSAGE = "Too many sign-in attempts. Try again later."
+
+
 def map_authentication_error(exc: AuthenticationError) -> AppException:
+    if isinstance(exc, LoginThrottledError):
+        # Same answer whether or not the account exists (F-004).
+        return AppException(LOGIN_THROTTLED_MESSAGE, status_code=429)
     if isinstance(exc, InvalidCredentialsError):
         return AppException("Invalid email or password", status_code=401)
     if isinstance(exc, InactiveUserError):

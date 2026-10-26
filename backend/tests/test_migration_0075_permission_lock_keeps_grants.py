@@ -36,7 +36,8 @@ def _module():
 def test_revision_chain_is_linear_head() -> None:
     script = ScriptDirectory.from_config(Config(str(ROOT / "alembic.ini")))
 
-    assert script.get_heads() == ["20261026_0075"]
+    # Later revisions build on 0075; the chain must stay linear (single head).
+    assert len(script.get_heads()) == 1
     assert script.get_revision("20261026_0075").down_revision == "20261026_0074"
 
 
@@ -163,7 +164,7 @@ def test_lock_keeps_grants_on_postgres() -> None:
         db.add(RolePermissionModel(role_id=template_id, permission_id=permission_id))
         db.flush()
 
-        claims = SimpleNamespace(sub=SimpleNamespace(value=actor_id))
+        claims = SimpleNamespace(sub=SimpleNamespace(value=actor_id), sid=SimpleNamespace(value=uuid.uuid4()))
         admin = AuthorizationContext(user_id=actor_id, organization_id=org_id, email="a@example.com", is_super_admin=True)
 
         # 6 roles hold the grant: template + 3 derived + 2 custom organization roles.
