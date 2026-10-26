@@ -34,6 +34,8 @@ class SessionModel(Base):
         onupdate=func.now(),
     )
     revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    # Absolute session end (F-C8, migration 20261027_0077).
+    expires_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
     last_activity_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String(512), nullable=True)
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)

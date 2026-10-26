@@ -76,7 +76,7 @@ class RefreshSessionUseCase:
             raise InvalidRefreshTokenError("Invalid refresh token")
 
         try:
-            session.assert_active()
+            session.assert_active(now)
         except AuthenticationError as exc:
             raise InvalidRefreshTokenError(str(exc)) from exc
 

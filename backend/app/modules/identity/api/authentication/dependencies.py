@@ -267,6 +267,7 @@ def get_token_service() -> TokenService:
     return JwtTokenService(
         secret_key=settings.JWT_SECRET_KEY,
         algorithm=settings.JWT_ALGORITHM,
+        max_lifetime_seconds=settings.access_token_expire_seconds,
     )
 
 
@@ -288,7 +289,7 @@ def get_id_generator() -> IdGenerator:
 
 def get_token_policy() -> TokenPolicy:
     return TokenPolicy(
-        access_token_expire_seconds=settings.ACCESS_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        access_token_expire_seconds=settings.access_token_expire_seconds,
         refresh_token_expire_days=settings.REFRESH_TOKEN_EXPIRE_DAYS,
     )
 

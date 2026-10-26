@@ -39,6 +39,11 @@ class TokenPairIssuer:
         self._token_policy = token_policy
         self._id_generator = id_generator
 
+    @property
+    def session_lifetime(self) -> timedelta:
+        """Absolute session lifetime: the refresh lifetime (ADR-0003, F-C8)."""
+        return timedelta(days=self._token_policy.refresh_token_expire_days)
+
     def issue(
         self,
         user: User,
@@ -50,6 +55,9 @@ class TokenPairIssuer:
         now = self._clock.now()
         parsed_client = client or ParsedClientContext()
         refresh_expires_at = now + timedelta(days=self._token_policy.refresh_token_expire_days)
+        # Rotation never outlives the session's absolute end (F-C8).
+        if session.expires_at is not None and session.expires_at < refresh_expires_at:
+            refresh_expires_at = session.expires_at
         access_expires_at = now + timedelta(seconds=self._token_policy.access_token_expire_seconds)
 
         refresh_token_value = self._refresh_token_service.create()

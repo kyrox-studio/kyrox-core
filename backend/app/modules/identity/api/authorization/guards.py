@@ -2,12 +2,13 @@ from collections.abc import Callable
 from typing import Annotated
 from uuid import UUID
 
-import jwt
 from fastapi import Depends, Header, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.exceptions import AppException
+from app.modules.identity.api.authentication.access_guard import resolve_access_token_claims
 from app.modules.identity.api.authentication.dependencies import (
+    get_clock,
     get_session_repository,
     get_token_service,
 )
@@ -21,10 +22,10 @@ from app.modules.identity.api.authorization.dependencies import (
 )
 from app.modules.identity.api.authorization.error_mapping import map_authorization_error
 from app.modules.identity.application.authorization import AuthorizationService, CheckPermissionCommand
+from app.modules.identity.domain.authentication.ports.clock import Clock
 from app.modules.identity.domain.authentication.ports.session_repository import SessionRepository
 from app.modules.identity.domain.authentication.ports.token_service import TokenService
 from app.modules.identity.domain.authentication.value_objects.security.access_token import (
-    AccessToken,
     AccessTokenClaims,
 )
 from app.modules.identity.domain.authorization.exceptions import PermissionDeniedError
@@ -41,24 +42,9 @@ def get_access_token_claims(
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
     token_service: TokenService = Depends(get_token_service),
     session_repository: SessionRepository = Depends(get_session_repository),
+    clock: Clock = Depends(get_clock),
 ) -> AccessTokenClaims:
-    if credentials is None or credentials.scheme.lower() != "bearer":
-        raise AppException("Not authenticated", status_code=status.HTTP_401_UNAUTHORIZED)
-
-    try:
-        claims = token_service.decode_access_token(AccessToken.create(credentials.credentials))
-    except (jwt.PyJWTError, ValueError) as exc:
-        raise AppException("Invalid access token", status_code=status.HTTP_401_UNAUTHORIZED) from exc
-
-    session = session_repository.get_by_id(claims.sid)
-    if (
-        session is None
-        or not session.is_active
-        or session.user_id.value != claims.sub.value
-    ):
-        raise AppException("Invalid access token", status_code=status.HTTP_401_UNAUTHORIZED)
-
-    return claims
+    return resolve_access_token_claims(credentials, token_service, session_repository, clock)
 
 
 def get_organization_id(

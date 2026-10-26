@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI
 
 from app.api.v1.router import api_v1_router
-from app.core.config import settings
+from app.core.config import settings, validate_runtime_settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import setup_logging
 from app.db.session import SessionLocal
@@ -57,6 +57,8 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     setup_logging()
+    # F-C5: refuse to start with unsafe production configuration.
+    validate_runtime_settings(settings)
 
     app = FastAPI(
         title=settings.APP_NAME,

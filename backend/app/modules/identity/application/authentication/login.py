@@ -77,6 +77,7 @@ class LoginUseCase:
             created_at=now,
             updated_at=now,
             last_activity_at=now,
+            expires_at=now + self._token_pair_issuer.session_lifetime,
             ip_address=client.ip_address,
             user_agent=client.user_agent,
             device_name=client.device_name,
