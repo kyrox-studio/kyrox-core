@@ -11,6 +11,20 @@ jobs:
     name: Backend CI
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: kyrox_core_migrations
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -33,3 +47,23 @@ jobs:
       - name: Run tests
         run: |
           pytest
+
+      # PostgreSQL-only migration behaviour (triggers) that SQLite tests cannot see.
+      - name: PostgreSQL migration checks
+        env:
+          DATABASE_URL: postgresql://postgres:ci-only-password@localhost:5432/kyrox_core_migrations
+          KYROX_TEST_POSTGRES_URL: postgresql://postgres:ci-only-password@localhost:5432/kyrox_core_migrations
+        run: |
+          alembic upgrade head
+          pytest backend/tests/test_migration_0074_drop_default_owner_super_admin_trigger.py -rs
+
+      # Warning only (SECURITY_PROGRAM F-G2): deploy patches same-major fixes
+      # automatically; a major upgrade needs its own PR.
+      - name: Dependency audit (warning only)
+        run: |
+          python -m venv "$RUNNER_TEMP/pip-audit"
+          "$RUNNER_TEMP/pip-audit/bin/pip" install --quiet "pip-audit>=2.7"
+          if ! "$RUNNER_TEMP/pip-audit/bin/pip-audit" -r requirements.txt --progress-spinner off > pip-audit.txt 2>&1; then
+            echo "::warning title=pip-audit::Known vulnerabilities (or audit error) for requirements.txt; see the step log. Deploy patches same-major fixes automatically; major upgrades need a PR."
+          fi
+          cat pip-audit.txt
