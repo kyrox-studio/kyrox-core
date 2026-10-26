@@ -325,6 +325,15 @@ def test_sqlalchemy_permission_checker_evaluates_user_role_graph(db_session: Ses
         PermissionCode.create("core.user.create"),
     ) is False
 
+    # Products (Fair Stand) rely on this: a non-active organization grants nothing.
+    db_session.get(OrganizationModel, org.id).status = OrganizationStatus.SUSPENDED.value
+    db_session.commit()
+    assert checker.has_permission(
+        UserId(user.id),
+        OrganizationId(org.id),
+        PermissionCode.create("core.user.read"),
+    ) is False
+
 
 def test_sqlalchemy_platform_user_reader_returns_snapshot(db_session: Session) -> None:
     user, _org = _seed_user_and_org(db_session)
