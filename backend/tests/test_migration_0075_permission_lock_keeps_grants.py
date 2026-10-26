@@ -163,7 +163,7 @@ def test_lock_keeps_grants_on_postgres() -> None:
         db.add(RolePermissionModel(role_id=template_id, permission_id=permission_id))
         db.flush()
 
-        claims = SimpleNamespace(sub=SimpleNamespace(value=actor_id))
+        claims = SimpleNamespace(sub=SimpleNamespace(value=actor_id), sid=SimpleNamespace(value=uuid.uuid4()))
         admin = AuthorizationContext(user_id=actor_id, organization_id=org_id, email="a@example.com", is_super_admin=True)
 
         # 6 roles hold the grant: template + 3 derived + 2 custom organization roles.

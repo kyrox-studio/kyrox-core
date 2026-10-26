@@ -83,6 +83,7 @@ def get_authorization_context(
         organization_id=organization_id,
         email=claims.email.value,
         is_super_admin=is_super_admin(claims.sub.value, platform_user_reader),
+        session_id=claims.sid.value,
     )
 
 
@@ -150,6 +151,7 @@ def require_permission(
                 organization_id=context.organization_id,
                 email=context.email,
                 is_super_admin=True,
+                session_id=context.session_id,
             )
 
         try:
@@ -168,6 +170,7 @@ def require_permission(
             organization_id=context.organization_id,
             email=context.email,
             is_super_admin=False,
+            session_id=context.session_id,
         )
 
     return dependency

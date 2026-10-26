@@ -57,8 +57,10 @@ def test_super_admin_template_derive_sync_and_permission_lock(
     db_session.add(RolePermissionModel(role_id=template_id, permission_id=permission_id))
     db_session.commit()
 
+    session_id = uuid.uuid4()
     client.app.dependency_overrides[require_super_admin] = lambda: SimpleNamespace(
-        sub=SimpleNamespace(value=actor_id)
+        sub=SimpleNamespace(value=actor_id),
+        sid=SimpleNamespace(value=session_id),
     )
 
     rejected_system_permission = client.patch(
@@ -124,6 +126,8 @@ def test_super_admin_template_derive_sync_and_permission_lock(
     assert db_session.scalar(select(func.count(RolePermissionModel.role_id)).where(
         RolePermissionModel.permission_id == permission_id
     )) == 0
+    # ADR-0004 naming (F-C13): identity.<resource>.<verb>, with the actor session.
     assert db_session.scalar(select(func.count(AuditLogModel.id)).where(
-        AuditLogModel.action == "permission.lifecycle.update"
+        AuditLogModel.action == "identity.permission.lifecycle_changed",
+        AuditLogModel.session_id == session_id,
     )) == 3

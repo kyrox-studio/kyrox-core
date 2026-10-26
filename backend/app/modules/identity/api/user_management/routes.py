@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -15,6 +16,11 @@ from app.modules.identity.api.authentication.dependencies import (
 from app.modules.identity.api.authorization.context import AuthorizationContext
 from app.modules.identity.api.authorization.guards import get_access_token_claims, require_permission
 from app.modules.identity.api.authorization.scope import assert_organization_scope
+from app.modules.identity.api.role_management.privilege import (
+    assert_can_assign_role,
+    assert_can_manage_user,
+)
+from app.modules.identity.api.user_management.audit import record_context_event
 from app.modules.identity.api.user_management.schemas import (
     AssignableRoleResponse,
     ErrorResponse,
@@ -41,9 +47,7 @@ from app.modules.identity.domain.authentication.value_objects.identity.user_id i
 from app.modules.identity.domain.authentication.value_objects.security.access_token import AccessTokenClaims
 from app.modules.identity.infrastructure.authentication.security import Argon2idPasswordHasher
 from app.modules.identity.infrastructure.authorization.persistence.models import (
-    PermissionModel,
     RoleModel,
-    RolePermissionModel,
     UserRoleModel,
 )
 from app.modules.identity.infrastructure.organization.persistence.models import OrganizationModel
@@ -142,33 +146,6 @@ def _resolve_role(
     return role
 
 
-def _assert_can_assign_role(
-    db: Session,
-    context: AuthorizationContext,
-    role: RoleModel,
-) -> None:
-    if context.is_super_admin or not role.is_protected:
-        return
-    allowed = db.scalar(
-        select(PermissionModel.id)
-        .join(RolePermissionModel, RolePermissionModel.permission_id == PermissionModel.id)
-        .join(UserRoleModel, UserRoleModel.role_id == RolePermissionModel.role_id)
-        .where(
-            UserRoleModel.user_id == context.user_id,
-            UserRoleModel.organization_id == context.organization_id,
-            UserRoleModel.status == "active",
-            UserRoleModel.revoked_at.is_(None),
-            PermissionModel.code == "identity.roles.assign_protected",
-            PermissionModel.lifecycle_state == "active",
-        )
-    )
-    if allowed is None:
-        raise AppException(
-            "Protected role assignment is not allowed",
-            status_code=status.HTTP_403_FORBIDDEN,
-        )
-
-
 def _active_role_for_user(
     db: Session,
     organization_id: UUID,
@@ -237,7 +214,12 @@ def _assign_role(
     user_id: UUID,
     role_id: UUID,
     assigned_by: UUID,
-) -> None:
+) -> list[str] | None:
+    """Make ``role_id`` the user's single active role.
+
+    Returns the ids of the revoked previous roles, or ``None`` when the role was
+    already active (no change).
+    """
     role = _resolve_role(db, organization_id, role_id)
     user = db.get(UserModel, user_id)
     if user is None or user.deleted_at is not None or user.organization_id != organization_id:
@@ -254,11 +236,16 @@ def _assign_role(
             UserRoleModel.revoked_at.is_(None),
         )
     ).all()
+    if any(
+        item.organization_id == organization_id and item.role_id == role.id
+        for item in active_roles
+    ):
+        return None
+    revoked_role_ids: list[str] = []
     for item in active_roles:
-        if item.organization_id == organization_id and item.role_id == role.id:
-            return
         item.status = "revoked"
         item.revoked_at = now
+        revoked_role_ids.append(str(item.role_id))
 
     db.add(
         UserRoleModel(
@@ -271,6 +258,108 @@ def _assign_role(
             assigned_by=assigned_by,
         )
     )
+    return revoked_role_ids
+
+
+def _current_role_id(db: Session, organization_id: UUID, user_id: UUID) -> UUID | None:
+    role = _active_role_for_user(db, organization_id, user_id)
+    return None if role is None else role.id
+
+
+def _audit_role_assigned(
+    db: Session,
+    context: AuthorizationContext,
+    *,
+    organization_id: UUID,
+    user_id: UUID,
+    role_id: UUID,
+    revoked_role_ids: list[str] | None,
+) -> None:
+    if revoked_role_ids is None:
+        return
+    record_context_event(
+        db,
+        context,
+        action="identity.role.assigned",
+        resource_type="user",
+        resource_id=user_id,
+        organization_id=organization_id,
+        old_values={"role_ids": revoked_role_ids},
+        new_values={"role_id": str(role_id)},
+    )
+
+
+def _effective_context(context: AuthorizationContext, actor_is_super: bool) -> AuthorizationContext:
+    """Privilege checks use the DB-backed Super Admin flag, like the rest of this module."""
+    if context.is_super_admin == actor_is_super:
+        return context
+    return replace(context, is_super_admin=actor_is_super)
+
+
+def _audit_user_update(
+    db: Session,
+    context: AuthorizationContext,
+    *,
+    organization_id: UUID,
+    user: UserModel,
+    password_changed: bool,
+    previous_email: str,
+    previous_status: str,
+    was_super_admin: bool,
+) -> None:
+    """Credential/identity, status and Super Admin changes; secrets are never recorded."""
+    changed: list[str] = []
+    old_values: dict[str, object] = {}
+    new_values: dict[str, object] = {}
+    if user.email != previous_email:
+        changed.append("email")
+        old_values["email"] = previous_email
+        new_values["email"] = user.email
+    if password_changed:
+        changed.append("password")
+        new_values["credential_replaced"] = True
+    if changed:
+        record_context_event(
+            db,
+            context,
+            action="identity.user.updated",
+            resource_type="user",
+            resource_id=user.id,
+            organization_id=organization_id,
+            old_values=old_values or None,
+            new_values=new_values,
+            metadata={"changed_fields": changed},
+        )
+    if user.status != previous_status:
+        record_context_event(
+            db,
+            context,
+            action=(
+                "identity.user.deactivated"
+                if user.status != "active"
+                else "identity.user.activated"
+            ),
+            resource_type="user",
+            resource_id=user.id,
+            organization_id=organization_id,
+            old_values={"status": previous_status},
+            new_values={"status": user.status},
+        )
+    if user.is_super_admin != was_super_admin:
+        record_context_event(
+            db,
+            context,
+            action=(
+                "identity.user.super_admin_granted"
+                if user.is_super_admin
+                else "identity.user.super_admin_revoked"
+            ),
+            resource_type="user",
+            resource_id=user.id,
+            organization_id=organization_id,
+            old_values={"is_super_admin": was_super_admin},
+            new_values={"is_super_admin": user.is_super_admin},
+        )
 
 
 @router.get(
@@ -423,6 +512,7 @@ def create_user(
 ) -> ManagedUserResponse:
     assert_organization_scope(organization_id, context)
     actor_is_super = _actor_is_super_admin(db, context.user_id)
+    context = _effective_context(context, actor_is_super)
     if payload.is_super_admin:
         _assert_super_admin_change_allowed(db, context, payload.is_super_admin)
 
@@ -435,7 +525,7 @@ def create_user(
 
     if not payload.is_super_admin:
         selected_role = _resolve_role(db, organization_id, payload.role_id)
-        _assert_can_assign_role(db, context, selected_role)
+        assert_can_assign_role(db, context, selected_role)
 
     now = _now()
     user = UserModel(
@@ -451,13 +541,46 @@ def create_user(
     db.add(user)
     db.flush()
 
-    if not user.is_super_admin:
-        _assign_role(
+    record_context_event(
+        db,
+        context,
+        action="identity.user.created",
+        resource_type="user",
+        resource_id=user.id,
+        organization_id=organization_id,
+        new_values={
+            "email": user.email,
+            "status": user.status,
+            "is_super_admin": user.is_super_admin,
+            "role_id": None if user.is_super_admin else str(payload.role_id),
+        },
+    )
+    if user.is_super_admin:
+        record_context_event(
+            db,
+            context,
+            action="identity.user.super_admin_granted",
+            resource_type="user",
+            resource_id=user.id,
+            organization_id=organization_id,
+            old_values={"is_super_admin": False},
+            new_values={"is_super_admin": True},
+        )
+    else:
+        revoked = _assign_role(
             db,
             organization_id=organization_id,
             user_id=user.id,
             role_id=payload.role_id,
             assigned_by=context.user_id,
+        )
+        _audit_role_assigned(
+            db,
+            context,
+            organization_id=organization_id,
+            user_id=user.id,
+            role_id=payload.role_id,
+            revoked_role_ids=revoked,
         )
     db.flush()
     return _to_response(db, organization_id, user, expose_super_admin=actor_is_super)
@@ -490,6 +613,7 @@ def update_user(
         raise AppException("User not found", status_code=status.HTTP_404_NOT_FOUND)
 
     actor_is_super = _actor_is_super_admin(db, context.user_id)
+    context = _effective_context(context, actor_is_super)
     was_super_admin = user.is_super_admin
     previous_email = user.email
     previous_status = user.status
@@ -497,11 +621,9 @@ def update_user(
 
     if not was_super_admin and user.organization_id != organization_id:
         raise AppException("User not found in this organization", status_code=status.HTTP_404_NOT_FOUND)
-    if was_super_admin and not actor_is_super:
-        raise AppException(
-            "Only a Super Admin can modify a Super Admin",
-            status_code=status.HTTP_403_FORBIDDEN,
-        )
+    # F-C1: credentials, email, status and role of a user holding permissions the
+    # actor lacks (or of a Super Admin) cannot be changed by that actor.
+    assert_can_manage_user(db, context, user)
     if payload.is_super_admin is not None:
         _assert_super_admin_change_allowed(db, context, payload.is_super_admin)
         if was_super_admin and not payload.is_super_admin and payload.role_id is None:
@@ -535,6 +657,7 @@ def update_user(
     if payload.is_super_admin is not None:
         user.is_super_admin = payload.is_super_admin
 
+    role_change: tuple[UUID, list[str] | None] | None = None
     if user.is_super_admin:
         if user.organization_id is None:
             user.organization_id = organization_id
@@ -542,17 +665,39 @@ def update_user(
         user.organization_id = organization_id
         if payload.role_id is not None:
             selected_role = _resolve_role(db, organization_id, payload.role_id)
-            _assert_can_assign_role(db, context, selected_role)
-            _assign_role(
+            if _current_role_id(db, organization_id, user_id) != selected_role.id:
+                assert_can_assign_role(db, context, selected_role)
+            revoked = _assign_role(
                 db,
                 organization_id=organization_id,
                 user_id=user_id,
                 role_id=payload.role_id,
                 assigned_by=context.user_id,
             )
+            role_change = (selected_role.id, revoked)
 
     user.updated_at = _now()
     db.flush()
+
+    _audit_user_update(
+        db,
+        context,
+        organization_id=organization_id,
+        user=user,
+        password_changed=payload.password is not None,
+        previous_email=previous_email,
+        previous_status=previous_status,
+        was_super_admin=was_super_admin,
+    )
+    if role_change is not None:
+        _audit_role_assigned(
+            db,
+            context,
+            organization_id=organization_id,
+            user_id=user.id,
+            role_id=role_change[0],
+            revoked_role_ids=role_change[1],
+        )
 
     # Credential, identity, access-state or privilege reductions invalidate every
     # existing session, matching self-service password change and reset.
@@ -592,6 +737,7 @@ def delete_user(
         raise AppException("User not found", status_code=status.HTTP_404_NOT_FOUND)
 
     actor_is_super = _actor_is_super_admin(db, context.user_id)
+    context = _effective_context(context, actor_is_super)
     if user.is_super_admin:
         if not actor_is_super:
             raise AppException(
@@ -600,7 +746,9 @@ def delete_user(
             )
     elif user.organization_id != organization_id:
         raise AppException("User not found in this organization", status_code=status.HTTP_404_NOT_FOUND)
+    assert_can_manage_user(db, context, user)
     _assert_not_last_active_super_admin(db, user)
+    previous_status = user.status
 
     now = _now()
     for item in db.scalars(
@@ -617,6 +765,16 @@ def delete_user(
     user.status = "inactive"
     user.updated_at = now
     db.flush()
+    record_context_event(
+        db,
+        context,
+        action="identity.user.deleted",
+        resource_type="user",
+        resource_id=user.id,
+        organization_id=organization_id,
+        old_values={"email": user.email, "status": previous_status},
+        new_values={"status": user.status},
+    )
     revoke_all_user_sessions.execute(UserId(user.id))
     db.flush()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
