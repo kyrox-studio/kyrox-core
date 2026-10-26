@@ -143,10 +143,18 @@ def _replace_permissions(db: Session, role: RoleModel, permissions: list[Permiss
     by_id = {item.id: item for item in permissions}
     for locked in kept_locked:
         by_id.setdefault(locked.id, locked)
-    merged = list(by_id.values())
-    db.execute(delete(RolePermissionModel).where(RolePermissionModel.role_id == role.id))
-    for permission in merged:
-        db.add(RolePermissionModel(role_id=role.id, permission_id=permission.id))
+    # Diff instead of delete-all + re-insert: an existing (locked) grant is never
+    # re-inserted, so the PostgreSQL lifecycle trigger only sees new assignments.
+    target_ids = set(by_id)
+    current_ids = set(_permission_ids(db, role.id))
+    removed_ids = current_ids - target_ids
+    if removed_ids:
+        db.execute(delete(RolePermissionModel).where(
+            RolePermissionModel.role_id == role.id,
+            RolePermissionModel.permission_id.in_(removed_ids),
+        ))
+    for permission_id in target_ids - current_ids:
+        db.add(RolePermissionModel(role_id=role.id, permission_id=permission_id))
     role.permissions_customized = customized
     role.updated_at = datetime.now(tz=UTC)
     db.flush()

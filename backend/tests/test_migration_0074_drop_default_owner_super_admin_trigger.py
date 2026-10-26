@@ -31,11 +31,12 @@ def _module():
     return module
 
 
-def test_revision_chain_is_linear_head() -> None:
+def test_revision_chain_is_linear() -> None:
     script = ScriptDirectory.from_config(Config(str(ROOT / "alembic.ini")))
 
-    assert script.get_heads() == ["20261026_0074"]
+    assert len(script.get_heads()) == 1
     assert script.get_revision("20261026_0074").down_revision == "20261012_0073"
+    assert "20261026_0074" in {rev.revision for rev in script.walk_revisions()}
 
 
 class RecordingBind:
