@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session as DbSession
 
 from app.db.session import get_db
 from app.modules.identity.api.authentication.dependencies import (
+    build_login_attempt_limiter,
+    build_login_audit_port,
     get_clock,
     get_id_generator,
     get_password_hasher,
@@ -55,6 +57,9 @@ def get_lifecycle_aware_login_use_case(
             clock=clock,
         ),
         organization_repository=SqlAlchemyOrganizationRepository(db, clock),
+        attempt_limiter=build_login_attempt_limiter(db),
+        audit_port=build_login_audit_port(db),
+        persist_failure=db.commit,
     )
 
 

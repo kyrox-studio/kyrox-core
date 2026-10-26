@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import pytest
 
-from app.core import config as config_module
 from app.core.config import (
     DEV_IDENTITY_ACTION_TOKEN_SECRET_KEY,
     DEV_JWT_SECRET_KEY,
@@ -28,10 +27,12 @@ def _settings(**values) -> Settings:
 def test_production_with_default_secrets_does_not_start(monkeypatch) -> None:
     import app.main as main_module
 
-    monkeypatch.setattr(config_module.settings, "ENVIRONMENT", "production")
-    monkeypatch.setattr(config_module.settings, "JWT_SECRET_KEY", DEV_JWT_SECRET_KEY)
+    # Patch the settings object create_app() actually reads.
+    active = main_module.settings
+    monkeypatch.setattr(active, "ENVIRONMENT", "production")
+    monkeypatch.setattr(active, "JWT_SECRET_KEY", DEV_JWT_SECRET_KEY)
     monkeypatch.setattr(
-        config_module.settings,
+        active,
         "CORE_IDENTITY_ACTION_TOKEN_SECRET_KEY",
         DEV_IDENTITY_ACTION_TOKEN_SECRET_KEY,
     )

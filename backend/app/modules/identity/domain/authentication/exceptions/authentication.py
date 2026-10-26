@@ -14,6 +14,10 @@ class LockedUserError(AuthenticationError):
     """User account is locked."""
 
 
+class LoginThrottledError(AuthenticationError):
+    """Too many failed sign-in attempts for this account/client (temporary)."""
+
+
 class InvalidRefreshTokenError(AuthenticationError):
     """Refresh token is missing, malformed, or otherwise invalid."""
 

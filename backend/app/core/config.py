@@ -64,6 +64,16 @@ class Settings(BaseSettings):
     CORE_IDENTITY_ACTION_TOKEN_TTL_HOURS: int = 24
     CORE_IDENTITY_PASSWORD_RESET_TTL_MINUTES: int = 60
     CORE_IDENTITY_PASSWORD_RESET_COOLDOWN_SECONDS: int = 60
+
+    # F-004 sign-in throttle (database-backed, shared by all workers). Failures
+    # are counted per window; reaching a threshold locks that key for the
+    # lockout period. 0 disables a counter. The per-IP counter is off by default
+    # because FAIR CRM signs users in server-to-server (one address for all).
+    CORE_LOGIN_FAILURE_WINDOW_SECONDS: int = 900
+    CORE_LOGIN_LOCKOUT_SECONDS: int = 900
+    CORE_LOGIN_MAX_FAILURES_PER_ACCOUNT_IP: int = 5
+    CORE_LOGIN_MAX_FAILURES_PER_ACCOUNT: int = 10
+    CORE_LOGIN_MAX_FAILURES_PER_IP: int = 0
     CORE_IDENTITY_ACTIVATION_URL_TEMPLATE: str = (
         "http://localhost:3000/activate?token={token}"
     )

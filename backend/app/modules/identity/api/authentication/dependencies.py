@@ -26,8 +26,12 @@ from app.modules.identity.application.authentication.identity_action_tokens impo
     ConsumeIdentityActionToken,
     IssueIdentityActionToken,
 )
-from app.modules.identity.application.authentication.login import LoginUseCase
-from app.modules.identity.application.authentication.logout import LogoutUseCase
+from app.modules.identity.application.authentication.login import (
+    LoginAuditEvent,
+    LoginAuditPort,
+    LoginUseCase,
+)
+from app.modules.identity.application.authentication.logout import LogoutAuditPort, LogoutUseCase
 from app.modules.identity.application.authentication.password_change import (
     ChangePasswordUseCase,
     PasswordChangeAuditPort,
@@ -77,6 +81,10 @@ from app.modules.identity.infrastructure.authentication.repositories import (
     SqlAlchemySessionRepository,
     SqlAlchemyUserRepository,
 )
+from app.modules.identity.infrastructure.authentication.repositories.sqlalchemy_login_attempt_limiter import (
+    LoginThrottlePolicy,
+    SqlAlchemyLoginAttemptLimiter,
+)
 from app.modules.identity.infrastructure.authentication.security import (
     Argon2idPasswordHasher,
     JwtTokenService,
@@ -94,6 +102,7 @@ from app.modules.identity.infrastructure.authorization.repositories.sqlalchemy_u
 from app.modules.identity.infrastructure.organization.repositories.sqlalchemy_organization_repository import (
     SqlAlchemyOrganizationRepository,
 )
+from app.modules.identity.infrastructure.persistence.models import UserModel
 from app.modules.notifications.api.dependencies import get_send_notification_use_case
 from app.modules.notifications.application.commands import SendNotificationCommand
 from app.modules.notifications.application.identity_templates import (
@@ -220,6 +229,68 @@ class _CorePasswordResetAuditAdapter(PasswordResetAuditPort):
                 },
             )
         )
+
+
+class _CoreLoginAuditAdapter(LoginAuditPort):
+    """``identity.user.login`` with outcome metadata (ADR-0004, F-C13)."""
+
+    def __init__(self, db: DbSession) -> None:
+        self._audit_service = AuditService(SqlAlchemyAuditLogRepository(db))
+
+    def record_login(self, event: LoginAuditEvent) -> None:
+        metadata: dict[str, str] = {"source": "password_login", "outcome": event.outcome}
+        if event.reason is not None:
+            metadata["reason"] = event.reason
+        self._audit_service.record(
+            RecordAuditEventCommand(
+                organization_id=event.organization_id,
+                user_id=event.user_id,
+                session_id=event.session_id,
+                action="identity.user.login",
+                resource_type="user",
+                resource_id=None if event.user_id is None else str(event.user_id),
+                metadata=metadata,
+                ip_address=event.ip_address,
+                user_agent=event.user_agent,
+            )
+        )
+
+
+class _CoreLogoutAuditAdapter(LogoutAuditPort):
+    def __init__(self, db: DbSession) -> None:
+        self._db = db
+        self._audit_service = AuditService(SqlAlchemyAuditLogRepository(db))
+
+    def record_logout(self, *, user_id: UUID, session_id: UUID) -> None:
+        user = self._db.get(UserModel, user_id)
+        self._audit_service.record(
+            RecordAuditEventCommand(
+                organization_id=None if user is None else user.organization_id,
+                user_id=user_id,
+                session_id=session_id,
+                action="identity.user.logout",
+                resource_type="user",
+                resource_id=str(user_id),
+                metadata={"source": "refresh_token_logout"},
+            )
+        )
+
+
+def build_login_attempt_limiter(db: DbSession) -> SqlAlchemyLoginAttemptLimiter:
+    return SqlAlchemyLoginAttemptLimiter(
+        db,
+        LoginThrottlePolicy(
+            window_seconds=settings.CORE_LOGIN_FAILURE_WINDOW_SECONDS,
+            lockout_seconds=settings.CORE_LOGIN_LOCKOUT_SECONDS,
+            max_failures_per_account_ip=settings.CORE_LOGIN_MAX_FAILURES_PER_ACCOUNT_IP,
+            max_failures_per_account=settings.CORE_LOGIN_MAX_FAILURES_PER_ACCOUNT,
+            max_failures_per_ip=settings.CORE_LOGIN_MAX_FAILURES_PER_IP,
+        ),
+    )
+
+
+def build_login_audit_port(db: DbSession) -> LoginAuditPort:
+    return _CoreLoginAuditAdapter(db)
 
 
 class _CorePasswordChangeAuditAdapter(PasswordChangeAuditPort):
@@ -363,6 +434,7 @@ def get_token_pair_issuer(
 
 
 def get_login_use_case(
+    db: DbSession = Depends(get_db),
     user_repository: UserRepository = Depends(get_user_repository),
     session_repository: SessionRepository = Depends(get_session_repository),
     refresh_token_repository: RefreshTokenRepository = Depends(get_refresh_token_repository),
@@ -383,6 +455,9 @@ def get_login_use_case(
             refresh_token_repository=refresh_token_repository,
             clock=clock,
         ),
+        attempt_limiter=build_login_attempt_limiter(db),
+        audit_port=build_login_audit_port(db),
+        persist_failure=db.commit,
     )
 
 
@@ -407,6 +482,7 @@ def get_refresh_session_use_case(
 
 
 def get_logout_use_case(
+    db: DbSession = Depends(get_db),
     session_repository: SessionRepository = Depends(get_session_repository),
     refresh_token_repository: RefreshTokenRepository = Depends(get_refresh_token_repository),
     refresh_token_service: RefreshTokenService = Depends(get_refresh_token_service),
@@ -417,6 +493,7 @@ def get_logout_use_case(
         refresh_token_repository=refresh_token_repository,
         refresh_token_service=refresh_token_service,
         clock=clock,
+        audit_port=_CoreLogoutAuditAdapter(db),
     )
 
 

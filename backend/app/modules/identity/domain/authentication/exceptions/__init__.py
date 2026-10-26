@@ -5,6 +5,7 @@ from app.modules.identity.domain.authentication.exceptions.authentication import
     InvalidCredentialsError,
     InvalidRefreshTokenError,
     LockedUserError,
+    LoginThrottledError,
     RevokedRefreshTokenError,
 )
 
@@ -15,5 +16,6 @@ __all__ = [
     "InvalidCredentialsError",
     "InvalidRefreshTokenError",
     "LockedUserError",
+    "LoginThrottledError",
     "RevokedRefreshTokenError",
 ]
