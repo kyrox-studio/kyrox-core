@@ -24,9 +24,15 @@
         "backend/tests/modules/identity/test_session_revocation_hardening.py::test_removed_super_admin_old_token_loses_bypass",
         "backend/tests/modules/identity/test_session_revocation_hardening.py::test_last_active_super_admin_cannot_remove_itself",
         "backend/tests/modules/identity/authorization/test_role_management_api.py::test_super_admin_template_derive_sync_and_permission_lock",
-        "backend/tests/test_migration_0075_permission_lock_keeps_grants.py::test_lock_keeps_grants_on_postgres"
-      ],
-      "gap": "Holders of identity.users.update can change password/email/status of users with protected roles (OrganizationAdmin); holders of identity.roles.update can add permissions they do not hold to their own role; identity.roles.assign is not enforced on user create/update (SECURITY_PROGRAM F-C1, F-C2; product decision pending)."
+        "backend/tests/test_migration_0075_permission_lock_keeps_grants.py::test_lock_keeps_grants_on_postgres",
+        "backend/tests/modules/identity/authorization/test_privilege_hierarchy.py::test_editor_cannot_take_over_or_disable_org_admin",
+        "backend/tests/modules/identity/authorization/test_privilege_hierarchy.py::test_delete_holder_cannot_delete_more_privileged_user",
+        "backend/tests/modules/identity/authorization/test_privilege_hierarchy.py::test_editor_cannot_add_unheld_permission_to_own_role",
+        "backend/tests/modules/identity/authorization/test_privilege_hierarchy.py::test_editor_cannot_grant_unheld_permission_to_any_role",
+        "backend/tests/modules/identity/authorization/test_privilege_hierarchy.py::test_actor_cannot_reshape_role_holding_unheld_permissions",
+        "backend/tests/modules/identity/authorization/test_privilege_hierarchy.py::test_role_assignment_requires_roles_assign",
+        "backend/tests/modules/identity/authorization/test_privilege_hierarchy.py::test_assigner_cannot_assign_role_exceeding_own_grants"
+      ]
     },
     "SEC-02": {
       "status": "required",
@@ -50,9 +56,12 @@
         "backend/tests/modules/identity/test_session_revocation_hardening.py::test_refresh_reuse_revokes_session_and_rotated_pair",
         "backend/tests/modules/identity/test_session_revocation_hardening.py::test_admin_user_change_revokes_existing_sessions",
         "backend/tests/modules/identity/test_session_revocation_hardening.py::test_admin_user_delete_revokes_existing_sessions",
-        "backend/tests/modules/identity/test_session_revocation_hardening.py::test_validly_signed_token_with_missing_claim_is_401"
+        "backend/tests/modules/identity/test_session_revocation_hardening.py::test_validly_signed_token_with_missing_claim_is_401",
+        "backend/tests/modules/identity/authorization/test_session_absolute_expiry.py::test_ten_year_token_for_active_session_is_rejected",
+        "backend/tests/modules/identity/authorization/test_session_absolute_expiry.py::test_expired_session_rejects_access_and_refresh",
+        "backend/tests/modules/identity/authorization/test_session_absolute_expiry.py::test_login_sets_absolute_end_and_rotation_never_extends_it"
       ],
-      "gap": "Access token TTL is 15 days while ADR-0003 states 15 minutes and sessions have no absolute/idle expiry; login revokes all other sessions although ADR-0003 lists multi-device support; login/signup responses enumerate accounts (SECURITY_PROGRAM R-2, F-C6)."
+      "gap": "Access token TTL stays 15 days (ADR-0003: 15 minutes) because the embedded FAIR Stand editor never refreshes on 401; ACCESS_TOKEN_EXPIRE_MINUTES is ready once it does. Sessions now end after REFRESH_TOKEN_EXPIRE_DAYS (F-C8) but have no idle expiry; login revokes all other sessions although ADR-0003 lists multi-device support; login/signup responses enumerate accounts (SECURITY_PROGRAM R-2, F-C6)."
     },
     "SEC-04": {
       "status": "required",
@@ -61,9 +70,11 @@
         "backend/tests/modules/identity/authentication/test_password_policy.py::test_password_policy_error_never_echoes_password",
         "backend/tests/modules/identity/organization/test_product_lifecycle_contract.py::test_product_lifecycle_settings_have_no_default_secret",
         "backend/tests/modules/identity/organization/test_product_lifecycle_contract.py::test_product_lifecycle_snapshot_fails_closed_without_secure_credential",
-        "backend/tests/modules/audit/test_ol08_f_retention.py::test_retention_purge_fails_closed_without_secure_credential"
+        "backend/tests/modules/audit/test_ol08_f_retention.py::test_retention_purge_fails_closed_without_secure_credential",
+        "backend/tests/test_runtime_settings_guard.py::test_production_with_default_secrets_does_not_start",
+        "backend/tests/test_runtime_settings_guard.py::test_production_rejects_weak_secrets"
       ],
-      "gap": "No repository secret scanning step in Core CI; rotation/revocation path for JWT signing key not evidenced; JWT_SECRET_KEY and CORE_IDENTITY_ACTION_TOKEN_SECRET_KEY still have public dev-insecure defaults with no startup guard; HS256 signing key is shared with FAIR CRM and Fair Stand (SECURITY_PROGRAM F-C5/F-C8)."
+      "gap": "No repository secret scanning step in Core CI; rotation/revocation path for JWT signing key not evidenced; the production startup guard only runs when ENVIRONMENT=production (live Core was ENVIRONMENT=development at E-023); HS256 signing key is shared with FAIR CRM and Fair Stand, which validate tokens locally (SECURITY_PROGRAM F-C5/F-C8)."
     },
     "SEC-05": {
       "status": "required",
@@ -112,7 +123,11 @@
       "status": "required",
       "tests": [
         "backend/tests/modules/audit/test_service.py::test_audit_service_records_event_through_repository",
-        "backend/tests/modules/identity/authentication/test_activation.py::test_activation_api_is_single_use_audited_secret_safe_and_login_ready"
+        "backend/tests/modules/identity/authentication/test_activation.py::test_activation_api_is_single_use_audited_secret_safe_and_login_ready",
+        "backend/tests/modules/identity/authorization/test_identity_admin_audit.py::test_user_lifecycle_and_role_changes_are_audited",
+        "backend/tests/modules/identity/authorization/test_identity_admin_audit.py::test_role_management_actions_follow_naming_with_session",
+        "backend/tests/modules/identity/authorization/test_identity_admin_audit.py::test_super_admin_grant_is_audited",
+        "backend/tests/modules/identity/authorization/test_login_throttle_and_audit.py::test_sign_in_events_are_audited_without_secrets"
       ]
     },
     "SEC-14": {
@@ -125,8 +140,13 @@
     },
     "SEC-16": {
       "status": "required",
-      "tests": [],
-      "gap": "No login/reset/signup rate limit or lockout in Core code (source check 2026-10-25); whether an upstream proxy limits these routes is unverified."
+      "tests": [
+        "backend/tests/modules/identity/authorization/test_login_throttle_and_audit.py::test_correct_password_is_refused_while_locked",
+        "backend/tests/modules/identity/authorization/test_login_throttle_and_audit.py::test_lock_does_not_reveal_whether_account_exists",
+        "backend/tests/modules/identity/authorization/test_login_throttle_and_audit.py::test_successful_login_resets_counter",
+        "backend/tests/modules/identity/authorization/test_login_throttle_and_audit.py::test_lock_is_temporary"
+      ],
+      "gap": "Login is throttled (F-004); password reset has only a per-account cooldown and signup has no limit; per-IP counting is off because FAIR CRM signs users in server-to-server without forwarding the client address; whether an upstream proxy limits these routes is unverified."
     },
     "SEC-17": {
       "status": "required",

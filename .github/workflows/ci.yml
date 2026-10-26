@@ -56,7 +56,10 @@ jobs:
         run: |
           alembic upgrade head
           pytest backend/tests/test_migration_0074_drop_default_owner_super_admin_trigger.py \
-            backend/tests/test_migration_0075_permission_lock_keeps_grants.py -rs
+            backend/tests/test_migration_0075_permission_lock_keeps_grants.py \
+            backend/tests/test_migration_0076_role_assign_permission_grants.py \
+            backend/tests/test_migration_0077_session_absolute_expiry.py \
+            backend/tests/test_migration_0078_login_throttles.py -rs
 
       # Warning only (SECURITY_PROGRAM F-G2): deploy patches same-major fixes
       # automatically; a major upgrade needs its own PR.
