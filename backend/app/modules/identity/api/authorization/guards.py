@@ -59,20 +59,6 @@ def is_super_admin(user_id: UUID, platform_user_reader: PlatformUserReader) -> b
     return bool(snapshot is not None and snapshot.is_super_admin)
 
 
-def get_authorization_context(
-    claims: AccessTokenClaims = Depends(get_access_token_claims),
-    organization_id: UUID = Depends(get_organization_id),
-    platform_user_reader: PlatformUserReader = Depends(get_platform_user_reader),
-) -> AuthorizationContext:
-    return AuthorizationContext(
-        user_id=claims.sub.value,
-        organization_id=organization_id,
-        email=claims.email.value,
-        is_super_admin=is_super_admin(claims.sub.value, platform_user_reader),
-        session_id=claims.sid.value,
-    )
-
-
 def require_super_admin(
     claims: AccessTokenClaims = Depends(get_access_token_claims),
     platform_user_reader: PlatformUserReader = Depends(get_platform_user_reader),

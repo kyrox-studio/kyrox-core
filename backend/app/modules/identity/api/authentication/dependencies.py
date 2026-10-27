@@ -26,11 +26,7 @@ from app.modules.identity.application.authentication.identity_action_tokens impo
     ConsumeIdentityActionToken,
     IssueIdentityActionToken,
 )
-from app.modules.identity.application.authentication.login import (
-    LoginAuditEvent,
-    LoginAuditPort,
-    LoginUseCase,
-)
+from app.modules.identity.application.authentication.login import LoginAuditEvent, LoginAuditPort
 from app.modules.identity.application.authentication.logout import LogoutAuditPort, LogoutUseCase
 from app.modules.identity.application.authentication.password_change import (
     ChangePasswordUseCase,
@@ -47,7 +43,6 @@ from app.modules.identity.application.authentication.public_signup import (
     ActivationNotificationPort,
     PublicSignupUseCase,
 )
-from app.modules.identity.application.authentication.refresh_session import RefreshSessionUseCase
 from app.modules.identity.application.authentication.revoke_all_user_sessions import (
     RevokeAllUserSessionsUseCase,
 )
@@ -430,54 +425,6 @@ def get_token_pair_issuer(
         clock=clock,
         token_policy=token_policy,
         id_generator=id_generator,
-    )
-
-
-def get_login_use_case(
-    db: DbSession = Depends(get_db),
-    user_repository: UserRepository = Depends(get_user_repository),
-    session_repository: SessionRepository = Depends(get_session_repository),
-    refresh_token_repository: RefreshTokenRepository = Depends(get_refresh_token_repository),
-    password_hasher: PasswordHasher = Depends(get_password_hasher),
-    token_pair_issuer: TokenPairIssuer = Depends(get_token_pair_issuer),
-    clock: Clock = Depends(get_clock),
-    id_generator: IdGenerator = Depends(get_id_generator),
-) -> LoginUseCase:
-    return LoginUseCase(
-        user_repository=user_repository,
-        session_repository=session_repository,
-        password_hasher=password_hasher,
-        token_pair_issuer=token_pair_issuer,
-        clock=clock,
-        id_generator=id_generator,
-        revoke_all_user_sessions=RevokeAllUserSessionsUseCase(
-            session_repository=session_repository,
-            refresh_token_repository=refresh_token_repository,
-            clock=clock,
-        ),
-        attempt_limiter=build_login_attempt_limiter(db),
-        audit_port=build_login_audit_port(db),
-        persist_failure=db.commit,
-    )
-
-
-def get_refresh_session_use_case(
-    db: DbSession = Depends(get_db),
-    user_repository: UserRepository = Depends(get_user_repository),
-    session_repository: SessionRepository = Depends(get_session_repository),
-    refresh_token_repository: RefreshTokenRepository = Depends(get_refresh_token_repository),
-    refresh_token_service: RefreshTokenService = Depends(get_refresh_token_service),
-    token_pair_issuer: TokenPairIssuer = Depends(get_token_pair_issuer),
-    clock: Clock = Depends(get_clock),
-) -> RefreshSessionUseCase:
-    return RefreshSessionUseCase(
-        user_repository=user_repository,
-        session_repository=session_repository,
-        refresh_token_repository=refresh_token_repository,
-        refresh_token_service=refresh_token_service,
-        token_pair_issuer=token_pair_issuer,
-        clock=clock,
-        persist_revocation=db.commit,
     )
 
 
