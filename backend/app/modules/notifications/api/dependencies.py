@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from fastapi import BackgroundTasks, Depends, Request, Header, HTTPException
+from fastapi import BackgroundTasks, Depends, Header, HTTPException
 from secrets import compare_digest
 from app.core.config import settings
 from sqlalchemy.orm import Session as DbSession
@@ -8,12 +8,11 @@ from sqlalchemy.orm import Session as DbSession
 from app.db.session import get_db
 from app.modules.jobs.api.dependencies import get_enqueue_job_use_case, get_in_process_job_worker
 from app.modules.jobs.application.enqueue_job import EnqueueJobUseCase
-from app.modules.notifications.application.dispatch_notification import DispatchNotificationUseCase
 from app.modules.notifications.application.get_notification import GetNotificationUseCase
 from app.modules.notifications.application.policy import NotificationPolicy
 from app.modules.notifications.application.send_notification import SendNotificationUseCase
 from app.modules.notifications.application.list_in_app_notifications import ListSystemInAppNotificationsUseCase
-from app.modules.notifications.domain.ports import NotificationChannelRegistry, NotificationRepository
+from app.modules.notifications.domain.ports import NotificationRepository
 from app.modules.notifications.domain.ports import NotificationSettingsReader
 from app.modules.notifications.application.ports.job_enqueue_port import JobEnqueuePort
 from app.modules.notifications.infrastructure.jobs.handler_context import (
@@ -115,19 +114,3 @@ def get_get_notification_use_case(
     return GetNotificationUseCase(notification_repository=notification_repository)
 
 
-def get_notification_channel_registry(request: Request) -> NotificationChannelRegistry:
-    return request.app.state.notification_channel_registry
-
-
-def get_dispatch_notification_use_case(
-    notification_repository: NotificationRepository = Depends(get_notification_repository),
-    channel_registry: NotificationChannelRegistry = Depends(get_notification_channel_registry),
-    settings_reader: NotificationSettingsReader = Depends(get_notification_settings_reader),
-    notification_policy: NotificationPolicy = Depends(get_notification_policy),
-) -> DispatchNotificationUseCase:
-    return DispatchNotificationUseCase(
-        notification_repository=notification_repository,
-        channel_registry=channel_registry,
-        settings_reader=settings_reader,
-        notification_policy=notification_policy,
-    )

@@ -10,9 +10,6 @@ from app.modules.identity.domain.authorization.value_objects.rbac.permission_cod
 from app.modules.identity.domain.authorization.value_objects.rbac.permission_group_code import (
     PermissionGroupCode,
 )
-from app.modules.identity.domain.authorization.value_objects.rbac.permission_module import (
-    PermissionModule,
-)
 
 
 class PermissionGroupRepository(Protocol):
@@ -25,9 +22,6 @@ class PermissionGroupRepository(Protocol):
     def get_by_id(self, group_id: PermissionGroupId) -> PermissionGroup | None: ...
 
     def get_by_code(self, code: PermissionGroupCode) -> PermissionGroup | None: ...
-
-    def list_by_module(self, module: PermissionModule) -> list[PermissionGroup]: ...
-
 
 class PermissionRepository(Protocol):
     def add(self, permission: Permission) -> Permission: ...

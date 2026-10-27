@@ -8,9 +8,6 @@ from app.modules.identity.domain.authorization.value_objects.identity.permission
 from app.modules.identity.domain.authorization.value_objects.rbac.permission_group_code import (
     PermissionGroupCode,
 )
-from app.modules.identity.domain.authorization.value_objects.rbac.permission_module import (
-    PermissionModule,
-)
 from app.modules.identity.infrastructure.authorization.persistence.mappers.permission_group_mapper import (
     PermissionGroupMapper,
 )
@@ -61,11 +58,3 @@ class SqlAlchemyPermissionGroupRepository:
             return None
         return PermissionGroupMapper.to_domain(model)
 
-    def list_by_module(self, module: PermissionModule) -> list[PermissionGroup]:
-        stmt = (
-            select(PermissionGroupModel)
-            .where(PermissionGroupModel.module == module.value)
-            .order_by(PermissionGroupModel.sort_order)
-        )
-        models = self._session.scalars(stmt).all()
-        return [PermissionGroupMapper.to_domain(model) for model in models]
