@@ -4,8 +4,6 @@ from dataclasses import dataclass
 _MODULE_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 
 # Documented platform modules; product modules (e.g. fair_crm) use the same validation rules.
-_PLATFORM_MODULES = frozenset({"audit", "core", "identity", "jobs", "notifications", "settings"})
-
 
 @dataclass(frozen=True, slots=True)
 class PermissionModule:
