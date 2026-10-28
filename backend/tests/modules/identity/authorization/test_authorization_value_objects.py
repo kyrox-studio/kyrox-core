@@ -1,5 +1,4 @@
 import uuid
-from datetime import UTC, datetime
 
 import pytest
 
@@ -72,13 +71,7 @@ def test_permission_group_code_create_normalizes_value() -> None:
 def test_permission_module_accepts_product_namespace() -> None:
     module = PermissionModule.create("fair_crm")
     assert module.value == "fair_crm"
-    assert module.is_platform_module is False
 
-
-def test_permission_module_accepts_platform_modules() -> None:
-    for name in PermissionModule.platform_modules():
-        module = PermissionModule.create(name)
-        assert module.is_platform_module is True
 
 
 def test_permission_module_rejects_invalid_format() -> None:

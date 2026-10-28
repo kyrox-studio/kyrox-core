@@ -1,6 +1,5 @@
 import uuid
 from datetime import UTC, datetime
-from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine, select

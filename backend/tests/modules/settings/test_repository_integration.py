@@ -1,7 +1,6 @@
 import uuid
 from datetime import UTC, datetime
 
-import pytest
 from sqlalchemy.orm import Session
 
 from app.modules.settings.application.commands import UpsertSettingCommand

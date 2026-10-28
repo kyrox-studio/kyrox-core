@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from app.modules.identity.domain.authorization.enums.assignment_status import AssignmentStatus
-from app.modules.identity.domain.authorization.exceptions import InvalidRoleError
 from app.modules.identity.domain.authorization.value_objects.identity.organization_id import (
     OrganizationId,
 )
@@ -25,9 +24,6 @@ class UserRole:
     def is_effective(self) -> bool:
         return self.status is AssignmentStatus.ACTIVE and self.revoked_at is None
 
-    def assert_effective(self) -> None:
-        if not self.is_effective():
-            raise InvalidRoleError("User role assignment is not effective")
 
     def revoke(self, at: datetime) -> None:
         self.revoked_at = at

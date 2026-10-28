@@ -1,7 +1,6 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 
-import pytest
 
 from app.core.config import settings
 from app.modules.identity.domain.authentication.entities.refresh_token import RefreshToken
@@ -29,7 +28,6 @@ from app.modules.identity.domain.authentication.value_objects.security.refresh_t
     RefreshToken as RefreshTokenValue,
 )
 from app.modules.identity.domain.authentication.value_objects.security.token_hash import TokenHash
-from app.modules.identity.infrastructure.authentication.clock import UtcClock
 from app.modules.identity.infrastructure.authentication.persistence.mappers.refresh_token_mapper import (
     RefreshTokenMapper,
 )

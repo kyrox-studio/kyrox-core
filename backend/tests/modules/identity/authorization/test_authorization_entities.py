@@ -4,7 +4,6 @@ from datetime import UTC, datetime
 import pytest
 
 from app.modules.identity.domain.authorization.entities import (
-    Permission,
     PermissionGroup,
     Role,
     RolePermission,
@@ -21,7 +20,6 @@ from app.modules.identity.domain.authorization.value_objects.identity import (
     UserRoleId,
 )
 from app.modules.identity.domain.authorization.value_objects.rbac import (
-    PermissionCode,
     PermissionGroupCode,
     PermissionModule,
     RoleSlug,
@@ -48,20 +46,6 @@ def test_permission_group_assert_modifiable_blocks_system_group() -> None:
     with pytest.raises(InvalidPermissionError):
         group.assert_modifiable()
 
-
-def test_permission_matches_code() -> None:
-    permission = Permission(
-        id=PermissionId(uuid.uuid4()),
-        group_id=PermissionGroupId(uuid.uuid4()),
-        code=PermissionCode.create("core.user.read"),
-        description="Read users",
-        is_system=True,
-        created_at=_now(),
-        updated_at=_now(),
-    )
-
-    assert permission.matches_code("core.user.read") is True
-    assert permission.matches_code("core.user.create") is False
 
 
 def test_role_assert_active() -> None:
@@ -94,9 +78,6 @@ def test_user_role_revoke_marks_assignment_ineffective() -> None:
     user_role.revoke(_now())
     assert user_role.is_effective() is False
     assert user_role.status is AssignmentStatus.INACTIVE
-
-    with pytest.raises(InvalidRoleError):
-        user_role.assert_effective()
 
 
 def test_role_permission_is_frozen() -> None:

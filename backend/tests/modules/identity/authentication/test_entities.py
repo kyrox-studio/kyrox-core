@@ -35,20 +35,6 @@ def _now() -> datetime:
     return datetime.now(tz=UTC)
 
 
-def test_user_can_authenticate_only_when_active_and_not_deleted() -> None:
-    user = User(
-        id=UserId(uuid.uuid4()),
-        email=Email.create("user@example.com"),
-        password_hash=PasswordHash("hash"),
-        status=UserStatus.ACTIVE,
-        created_at=_now(),
-        updated_at=_now(),
-    )
-    assert user.can_authenticate() is True
-
-    user.status = UserStatus.INACTIVE
-    assert user.can_authenticate() is False
-
 
 def test_user_assert_can_authenticate_raises_for_locked_user() -> None:
     user = User(

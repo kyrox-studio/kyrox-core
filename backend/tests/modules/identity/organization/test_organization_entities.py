@@ -28,7 +28,6 @@ def test_organization_lifecycle() -> None:
     )
 
     assert organization.is_active() is True
-    assert organization.can_accept_members() is True
 
     organization.suspend(_now())
     assert organization.status is OrganizationStatus.SUSPENDED

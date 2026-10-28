@@ -1,6 +1,4 @@
 import uuid
-from datetime import UTC, datetime
-from typing import Any
 
 import pytest
 
@@ -8,7 +6,6 @@ from app.modules.audit.application.dto import RecordAuditEventCommand
 from app.modules.audit.application.service import AuditService
 from app.modules.audit.domain.entities import AuditLog
 from app.modules.audit.domain.exceptions import InvalidAuditEventError
-from app.modules.audit.domain.ports import AuditLogRepository
 
 
 class InMemoryAuditLogRepository:

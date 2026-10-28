@@ -1,7 +1,6 @@
 import uuid
 from datetime import UTC, datetime
 
-import pytest
 
 from app.modules.jobs.application.worker.job_runner import JobRunner
 from app.modules.jobs.application.worker.registry import InMemoryJobHandlerRegistry

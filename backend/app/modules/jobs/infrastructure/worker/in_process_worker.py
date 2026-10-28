@@ -1,7 +1,6 @@
 from app.modules.jobs.application.commands import ProcessPendingJobsCommand
 from app.modules.jobs.application.policy import JobPolicy
 from app.modules.jobs.application.process_pending_jobs import ProcessPendingJobsUseCase
-from app.modules.jobs.domain.ports import JobHandlerRegistry
 
 
 class InProcessJobWorker:

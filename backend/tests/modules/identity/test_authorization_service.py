@@ -3,7 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.db.base import Base
-from app.modules.identity.application.authorization import AuthorizationService, CheckPermissionCommand
+from app.modules.identity.application.authorization import CheckPermissionCommand
 from app.modules.identity.domain.authorization.exceptions import PermissionDeniedError
 from app.modules.identity.domain.authorization.value_objects.identity.organization_id import (
     OrganizationId,

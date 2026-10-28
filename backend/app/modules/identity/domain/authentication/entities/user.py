@@ -30,8 +30,6 @@ class User:
     def is_deleted(self) -> bool:
         return self.deleted_at is not None
 
-    def can_authenticate(self) -> bool:
-        return not self.is_deleted and self.status is UserStatus.ACTIVE
 
     def is_locked(self) -> bool:
         return self.status is UserStatus.LOCKED

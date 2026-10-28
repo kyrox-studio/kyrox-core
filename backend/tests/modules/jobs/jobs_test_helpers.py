@@ -1,6 +1,5 @@
 import sys
 import uuid
-from datetime import UTC, datetime
 from pathlib import Path
 
 from sqlalchemy.orm import Session

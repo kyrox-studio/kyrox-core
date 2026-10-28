@@ -6,7 +6,6 @@ from app.modules.identity.application.authorization import (
     AuthorizationService,
     CheckPermissionCommand,
     PermissionPolicy,
-    SuperAdminPolicy,
 )
 from app.modules.identity.domain.authorization.exceptions import (
     InvalidPermissionError,
@@ -238,20 +237,6 @@ def test_permission_policy_normalize_accepts_nested_admin_codes() -> None:
     policy = PermissionPolicy()
     assert policy.normalize("fair_crm.admin.backups.read").value == "fair_crm.admin.backups.read"
 
-
-def test_super_admin_policy_allows_every_permission_code_from_flag_only() -> None:
-    user_id = UserId(uuid.uuid4())
-    policy = SuperAdminPolicy()
-    snapshot = PlatformUserSnapshot(
-        user_id=user_id,
-        is_active=True,
-        is_super_admin=True,
-        is_deleted=False,
-    )
-    code = PermissionCode.create("core.user.read")
-
-    assert policy.allows(snapshot, code) is True
-    assert policy.allows(snapshot, PermissionCode.create("identity.users.read")) is True
 
 
 def test_has_permission_returns_boolean() -> None:

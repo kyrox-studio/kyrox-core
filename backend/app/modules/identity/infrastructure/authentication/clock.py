@@ -1,6 +1,5 @@
 from datetime import UTC, datetime
 
-from app.modules.identity.domain.authentication.ports.clock import Clock
 
 
 class UtcClock:
