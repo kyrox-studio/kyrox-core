@@ -24,8 +24,6 @@ class Organization:
     def is_active(self) -> bool:
         return not self.is_deleted() and self.status is OrganizationStatus.ACTIVE
 
-    def can_accept_members(self) -> bool:
-        return self.is_active()
 
     def suspend(self, at: datetime) -> None:
         if self.status is not OrganizationStatus.ACTIVE:

@@ -10,7 +10,6 @@ from app.modules.identity.application.authentication.commands import (
     LogoutCommand,
     RefreshSessionCommand,
 )
-from app.modules.identity.application.authentication.id_generator import IdGenerator
 from app.modules.identity.application.authentication.login import LoginUseCase
 from app.modules.identity.application.authentication.logout import LogoutUseCase
 from app.modules.identity.application.authentication.policy import TokenPolicy
@@ -33,7 +32,6 @@ from app.modules.identity.domain.authentication.exceptions import (
     RevokedRefreshTokenError,
 )
 from app.modules.identity.domain.authentication.ports.clock import Clock
-from app.modules.identity.domain.authentication.ports.password_hasher import PasswordHasher
 from app.modules.identity.domain.authentication.value_objects.identity.refresh_token_id import (
     RefreshTokenId,
 )

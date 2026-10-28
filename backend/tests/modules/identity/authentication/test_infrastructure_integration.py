@@ -24,7 +24,6 @@ from app.modules.identity.domain.authentication.value_objects.security.password_
     PasswordHash,
 )
 from app.modules.identity.domain.authentication.value_objects.security.token_hash import TokenHash
-from app.modules.identity.infrastructure.authentication.clock import UtcClock
 from app.modules.identity.infrastructure.authentication.repositories.sqlalchemy_refresh_token_repository import (
     SqlAlchemyRefreshTokenRepository,
 )

@@ -23,8 +23,3 @@ class Permission:
         if self.is_system:
             raise InvalidPermissionError("System permissions cannot be modified")
 
-    def matches_code(self, raw: str) -> bool:
-        try:
-            return self.code == PermissionCode.create(raw)
-        except ValueError:
-            return False

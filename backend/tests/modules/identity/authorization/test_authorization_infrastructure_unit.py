@@ -1,14 +1,11 @@
 import uuid
 from datetime import UTC, datetime
 
-import pytest
-from sqlalchemy.orm import Session
 
 from app.modules.identity.domain.authorization.entities import (
     Permission,
     PermissionGroup,
     Role,
-    RolePermission,
     UserRole,
 )
 from app.modules.identity.domain.authorization.enums import AssignmentStatus, RoleScope

@@ -1,4 +1,3 @@
-import secrets
 
 from argon2 import PasswordHasher as Argon2PasswordHasher
 from argon2.exceptions import VerifyMismatchError

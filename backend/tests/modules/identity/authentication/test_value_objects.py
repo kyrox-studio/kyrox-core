@@ -1,5 +1,4 @@
 import uuid
-from datetime import UTC, datetime
 
 import pytest
 
@@ -17,12 +16,7 @@ from app.modules.identity.domain.authentication.value_objects.client import (
     IpAddress,
     UserAgent,
 )
-from app.modules.identity.domain.authentication.value_objects.identity import (
-    FamilyId,
-    RefreshTokenId,
-    SessionId,
-    UserId,
-)
+from app.modules.identity.domain.authentication.value_objects.identity import UserId
 from app.modules.identity.domain.authentication.value_objects.security import (
     AccessToken,
     Email,

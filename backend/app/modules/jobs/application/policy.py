@@ -3,7 +3,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from app.modules.jobs.domain.exceptions import InvalidJobPayloadError, InvalidJobTypeError
+from app.modules.jobs.domain.exceptions import InvalidJobPayloadError
 from app.modules.jobs.domain.value_objects.job_type import JobType
 
 DEFAULT_MAX_ATTEMPTS = 3

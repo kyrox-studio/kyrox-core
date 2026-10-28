@@ -3,7 +3,6 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session as DbSession
 
-from app.db.session import SessionLocal
 from app.modules.jobs.domain.entities import Job
 from app.modules.jobs.domain.ports import JobHandler, JobHandlerResult
 from app.modules.notifications.application.commands import DispatchNotificationCommand

@@ -1,5 +1,5 @@
 from app.modules.identity.application.authorization.commands import CheckPermissionCommand
-from app.modules.identity.application.authorization.policy import PermissionPolicy, SuperAdminPolicy
+from app.modules.identity.application.authorization.policy import PermissionPolicy
 from app.modules.identity.application.authorization.results import AuthorizationDecision
 from app.modules.identity.domain.authorization.exceptions import PermissionDeniedError
 from app.modules.identity.domain.authorization.ports.permission_checker import PermissionChecker
@@ -12,12 +12,10 @@ class AuthorizationService:
         self,
         platform_user_reader: PlatformUserReader,
         permission_checker: PermissionChecker,
-        super_admin_policy: SuperAdminPolicy | None = None,
         permission_policy: PermissionPolicy | None = None,
     ) -> None:
         self._platform_user_reader = platform_user_reader
         self._permission_checker = permission_checker
-        self._super_admin_policy = super_admin_policy or SuperAdminPolicy()
         self._permission_policy = permission_policy or PermissionPolicy()
 
     def check_permission(self, command: CheckPermissionCommand) -> AuthorizationDecision:

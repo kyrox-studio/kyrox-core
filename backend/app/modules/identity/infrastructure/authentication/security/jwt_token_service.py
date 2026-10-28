@@ -3,7 +3,6 @@ from uuid import UUID
 
 import jwt
 
-from app.modules.identity.domain.authentication.ports.token_service import TokenService
 from app.modules.identity.domain.authentication.value_objects.identity.session_id import SessionId
 from app.modules.identity.domain.authentication.value_objects.identity.user_id import UserId
 from app.modules.identity.domain.authentication.value_objects.security.access_token import (
