@@ -369,7 +369,7 @@ def _audit_user_update(
 )
 def get_user_management_context(
     claims: AccessTokenClaims = Depends(get_access_token_claims),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ) -> UserManagementContextResponse:
     user_id = UUID(str(claims.sub.value))
     user = db.get(UserModel, user_id)
@@ -416,7 +416,7 @@ def get_user_management_context(
 def list_assignable_roles(
     organization_id: UUID,
     context: AuthorizationContext = Depends(require_permission("identity.roles.read")),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ) -> list[AssignableRoleResponse]:
     assert_organization_scope(organization_id, context)
     stmt = (
@@ -447,7 +447,7 @@ def list_assignable_roles(
 def list_users(
     organization_id: UUID,
     context: AuthorizationContext = Depends(require_permission("identity.users.read")),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ) -> ManagedUserListResponse:
     assert_organization_scope(organization_id, context)
     actor_is_super = _actor_is_super_admin(db, context.user_id)
@@ -481,7 +481,7 @@ def get_user(
     organization_id: UUID,
     user_id: UUID,
     context: AuthorizationContext = Depends(require_permission("identity.users.read")),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ) -> ManagedUserResponse:
     assert_organization_scope(organization_id, context)
     user = _organization_user(db, organization_id, user_id)
@@ -508,7 +508,7 @@ def create_user(
     organization_id: UUID,
     payload: ManualUserCreateRequest,
     context: AuthorizationContext = Depends(require_permission("identity.users.create")),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ) -> ManagedUserResponse:
     assert_organization_scope(organization_id, context)
     actor_is_super = _actor_is_super_admin(db, context.user_id)
@@ -602,7 +602,7 @@ def update_user(
     user_id: UUID,
     payload: ManualUserUpdateRequest,
     context: AuthorizationContext = Depends(require_permission("identity.users.update")),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
     revoke_all_user_sessions: RevokeAllUserSessionsUseCase = Depends(
         get_revoke_all_user_sessions_use_case
     ),
@@ -726,7 +726,7 @@ def delete_user(
     organization_id: UUID,
     user_id: UUID,
     context: AuthorizationContext = Depends(require_permission("identity.users.delete")),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
     revoke_all_user_sessions: RevokeAllUserSessionsUseCase = Depends(
         get_revoke_all_user_sessions_use_case
     ),

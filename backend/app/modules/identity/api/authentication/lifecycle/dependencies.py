@@ -35,7 +35,7 @@ from app.modules.identity.infrastructure.organization.repositories.sqlalchemy_or
 
 
 def get_lifecycle_aware_login_use_case(
-    db: DbSession = Depends(get_db),
+    db: DbSession = Depends(get_db, scope="function"),
     user_repository: UserRepository = Depends(get_user_repository),
     session_repository: SessionRepository = Depends(get_session_repository),
     refresh_token_repository: RefreshTokenRepository = Depends(get_refresh_token_repository),
@@ -64,7 +64,7 @@ def get_lifecycle_aware_login_use_case(
 
 
 def get_lifecycle_aware_refresh_session_use_case(
-    db: DbSession = Depends(get_db),
+    db: DbSession = Depends(get_db, scope="function"),
     user_repository: UserRepository = Depends(get_user_repository),
     session_repository: SessionRepository = Depends(get_session_repository),
     refresh_token_repository: RefreshTokenRepository = Depends(get_refresh_token_repository),

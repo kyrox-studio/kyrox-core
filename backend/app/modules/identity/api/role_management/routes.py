@@ -198,7 +198,7 @@ def _replace_permissions(db: Session, role: RoleModel, permissions: list[Permiss
 @router.get("/role-templates", response_model=list[RoleResponse])
 def list_templates(
     _: AccessTokenClaims = Depends(require_super_admin),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ) -> list[RoleResponse]:
     roles = db.scalars(select(RoleModel).where(RoleModel.role_kind == "template", RoleModel.deleted_at.is_(None)).order_by(RoleModel.name)).all()
     return [_role_response(db, role) for role in roles]
@@ -209,7 +209,7 @@ def update_template(
     role_id: UUID,
     payload: RolePermissionsRequest,
     claims: AccessTokenClaims = Depends(require_super_admin),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ) -> RoleResponse:
     role = _get_role(db, role_id)
     if role.role_kind != "template":
@@ -228,7 +228,7 @@ def derive_template(
     role_id: UUID,
     payload: DeriveRoleRequest,
     claims: AccessTokenClaims = Depends(require_super_admin),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ) -> RoleResponse:
     template = _get_role(db, role_id)
     organization = db.get(OrganizationModel, payload.organization_id)
@@ -266,7 +266,7 @@ def preview_template_sync(
     role_id: UUID,
     payload: TemplateSyncRequest,
     _: AccessTokenClaims = Depends(require_super_admin),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ) -> list[TemplateSyncPreviewResponse]:
     template = _get_role(db, role_id)
     if template.role_kind != "template":
@@ -285,7 +285,7 @@ def sync_template(
     role_id: UUID,
     payload: TemplateSyncRequest,
     claims: AccessTokenClaims = Depends(require_super_admin),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ) -> list[RoleResponse]:
     template = _get_role(db, role_id)
     if template.role_kind != "template":
@@ -307,7 +307,7 @@ def create_organization_role(
     organization_id: UUID,
     payload: RoleCreateRequest,
     context: AuthorizationContext = Depends(require_permission("identity.roles.create")),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ) -> RoleResponse:
     assert_organization_scope(organization_id, context)
     permissions = _validated_permissions(db, payload.permission_ids, allow_restricted=context.is_super_admin)
@@ -334,7 +334,7 @@ def create_organization_role(
 def list_managed_organization_roles(
     organization_id: UUID,
     context: AuthorizationContext = Depends(require_permission("identity.roles.read")),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ) -> list[RoleResponse]:
     assert_organization_scope(organization_id, context)
     roles = db.scalars(
@@ -351,7 +351,7 @@ def list_managed_organization_roles(
 def list_organization_role_permissions(
     organization_id: UUID,
     context: AuthorizationContext = Depends(require_permission("identity.permissions.read")),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ) -> list[PermissionResponse]:
     assert_organization_scope(organization_id, context)
     permissions = db.scalars(
@@ -373,7 +373,7 @@ def get_organization_role(
     organization_id: UUID,
     role_id: UUID,
     context: AuthorizationContext = Depends(require_permission("identity.roles.read")),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ) -> RoleResponse:
     assert_organization_scope(organization_id, context)
     return _role_response(db, _get_org_role(db, organization_id, role_id))
@@ -385,7 +385,7 @@ def update_organization_role(
     role_id: UUID,
     payload: RoleUpdateRequest,
     context: AuthorizationContext = Depends(require_permission("identity.roles.update")),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ) -> RoleResponse:
     assert_organization_scope(organization_id, context)
     role = _get_org_role(db, organization_id, role_id)
@@ -408,7 +408,7 @@ def update_organization_role_permissions(
     role_id: UUID,
     payload: RolePermissionsRequest,
     context: AuthorizationContext = Depends(require_permission("identity.roles.update")),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ) -> RoleResponse:
     assert_organization_scope(organization_id, context)
     role = _get_org_role(db, organization_id, role_id)
@@ -446,7 +446,7 @@ def delete_organization_role(
     organization_id: UUID,
     role_id: UUID,
     context: AuthorizationContext = Depends(require_permission("identity.roles.delete")),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ) -> Response:
     assert_organization_scope(organization_id, context)
     role = _get_org_role(db, organization_id, role_id)
@@ -462,7 +462,7 @@ def delete_organization_role(
 @router.get("/permissions", response_model=list[PermissionResponse])
 def list_permissions(
     _: AccessTokenClaims = Depends(require_super_admin),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ) -> list[PermissionResponse]:
     return [PermissionResponse.model_validate({
         "id": item.id, "code": item.code, "description": item.description,
@@ -482,7 +482,7 @@ def preview_permission_lifecycle(
     permission_id: UUID,
     payload: PermissionLifecycleRequest,
     _: AccessTokenClaims = Depends(require_super_admin),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ) -> PermissionLifecyclePreviewResponse:
     permission = db.get(PermissionModel, permission_id)
     if permission is None:
@@ -495,7 +495,7 @@ def update_permission_lifecycle(
     permission_id: UUID,
     payload: PermissionLifecycleRequest,
     claims: AccessTokenClaims = Depends(require_super_admin),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ) -> PermissionLifecyclePreviewResponse:
     permission = db.get(PermissionModel, permission_id)
     if permission is None:

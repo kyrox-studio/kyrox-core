@@ -23,7 +23,7 @@ from app.modules.identity.domain.organization.ports.organization_repository impo
 
 
 def get_audit_log_query_repository(
-    db: DbSession = Depends(get_db),
+    db: DbSession = Depends(get_db, scope="function"),
 ) -> AuditLogQueryRepository:
     return SqlAlchemyAuditLogQueryRepository(db)
 
@@ -34,7 +34,7 @@ def get_list_organization_audit_logs_use_case(
     return ListOrganizationAuditLogsUseCase(query_repository=query_repository)
 
 
-def get_audit_service(db: DbSession = Depends(get_db)) -> AuditService:
+def get_audit_service(db: DbSession = Depends(get_db, scope="function")) -> AuditService:
     return AuditService(audit_log_repository=SqlAlchemyAuditLogRepository(db))
 
 
@@ -45,7 +45,7 @@ def get_record_organization_audit_event_use_case(
 
 
 def get_minimize_terminal_organization_audit_use_case(
-    db: DbSession = Depends(get_db),
+    db: DbSession = Depends(get_db, scope="function"),
 ) -> MinimizeTerminalOrganizationAuditUseCase:
     return MinimizeTerminalOrganizationAuditUseCase(
         audit_log_repository=SqlAlchemyAuditLogRepository(db)
@@ -53,7 +53,7 @@ def get_minimize_terminal_organization_audit_use_case(
 
 
 def get_purge_retained_organization_audit_use_case(
-    db: DbSession = Depends(get_db),
+    db: DbSession = Depends(get_db, scope="function"),
     organization_repository: OrganizationRepository = Depends(get_organization_repository),
     clock: Clock = Depends(get_clock),
 ) -> PurgeRetainedOrganizationAuditUseCase:

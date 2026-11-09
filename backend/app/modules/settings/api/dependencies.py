@@ -11,7 +11,7 @@ from app.modules.settings.domain.ports import SettingRepository
 from app.modules.settings.infrastructure.repositories import SqlAlchemySettingRepository
 
 
-def get_setting_repository(db: DbSession = Depends(get_db)) -> SettingRepository:
+def get_setting_repository(db: DbSession = Depends(get_db, scope="function")) -> SettingRepository:
     return SqlAlchemySettingRepository(db)
 
 

@@ -54,12 +54,12 @@ class NotificationWorkerScheduler:
 
 def get_notification_worker_scheduler(
     worker=Depends(get_in_process_job_worker),
-    db: DbSession = Depends(get_db),
+    db: DbSession = Depends(get_db, scope="function"),
 ) -> NotificationWorkerScheduler:
     return NotificationWorkerScheduler(worker=worker, db=db)
 
 
-def get_notification_repository(db: DbSession = Depends(get_db)) -> NotificationRepository:
+def get_notification_repository(db: DbSession = Depends(get_db, scope="function")) -> NotificationRepository:
     return SqlAlchemyNotificationRepository(db)
 
 
@@ -83,7 +83,7 @@ def get_list_system_in_app_notifications_use_case(
     return ListSystemInAppNotificationsUseCase(repository)
 
 
-def get_notification_settings_reader(db: DbSession = Depends(get_db)) -> NotificationSettingsReader:
+def get_notification_settings_reader(db: DbSession = Depends(get_db, scope="function")) -> NotificationSettingsReader:
     setting_reader = SettingRepositoryOrganizationSettingReader(SqlAlchemySettingRepository(db))
     return NotificationSettingsReaderAdapter(setting_reader)
 
