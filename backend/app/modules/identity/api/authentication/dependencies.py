@@ -361,24 +361,24 @@ def get_token_policy() -> TokenPolicy:
 
 
 def get_user_repository(
-    db: DbSession = Depends(get_db),
+    db: DbSession = Depends(get_db, scope="function"),
     clock: Clock = Depends(get_clock),
 ) -> UserRepository:
     return SqlAlchemyUserRepository(db, clock)
 
 
 def get_identity_action_token_repository(
-    db: DbSession = Depends(get_db),
+    db: DbSession = Depends(get_db, scope="function"),
 ) -> IdentityActionTokenRepository:
     return SqlAlchemyIdentityActionTokenRepository(db)
 
 
-def get_session_repository(db: DbSession = Depends(get_db)) -> SessionRepository:
+def get_session_repository(db: DbSession = Depends(get_db, scope="function")) -> SessionRepository:
     return SqlAlchemySessionRepository(db)
 
 
 def get_refresh_token_repository(
-    db: DbSession = Depends(get_db),
+    db: DbSession = Depends(get_db, scope="function"),
     clock: Clock = Depends(get_clock),
 ) -> RefreshTokenRepository:
     return SqlAlchemyRefreshTokenRepository(db, clock)
@@ -429,7 +429,7 @@ def get_token_pair_issuer(
 
 
 def get_logout_use_case(
-    db: DbSession = Depends(get_db),
+    db: DbSession = Depends(get_db, scope="function"),
     session_repository: SessionRepository = Depends(get_session_repository),
     refresh_token_repository: RefreshTokenRepository = Depends(get_refresh_token_repository),
     refresh_token_service: RefreshTokenService = Depends(get_refresh_token_service),
@@ -445,7 +445,7 @@ def get_logout_use_case(
 
 
 def get_public_signup_use_case(
-    db: DbSession = Depends(get_db),
+    db: DbSession = Depends(get_db, scope="function"),
     user_repository: UserRepository = Depends(get_user_repository),
     issue_identity_action_token: IssueIdentityActionToken = Depends(get_issue_identity_action_token),
     send_notification_use_case: SendNotificationUseCase = Depends(get_send_notification_use_case),
@@ -466,7 +466,7 @@ def get_public_signup_use_case(
 
 
 def get_complete_activation_use_case(
-    db: DbSession = Depends(get_db),
+    db: DbSession = Depends(get_db, scope="function"),
     user_repository: UserRepository = Depends(get_user_repository),
     consume_identity_action_token: ConsumeIdentityActionToken = Depends(
         get_consume_identity_action_token
@@ -485,7 +485,7 @@ def get_complete_activation_use_case(
 
 
 def get_forgot_password_use_case(
-    db: DbSession = Depends(get_db),
+    db: DbSession = Depends(get_db, scope="function"),
     user_repository: UserRepository = Depends(get_user_repository),
     token_repository: IdentityActionTokenRepository = Depends(
         get_identity_action_token_repository
@@ -517,7 +517,7 @@ def get_forgot_password_use_case(
 
 
 def get_reset_password_use_case(
-    db: DbSession = Depends(get_db),
+    db: DbSession = Depends(get_db, scope="function"),
     user_repository: UserRepository = Depends(get_user_repository),
     consume_identity_action_token: ConsumeIdentityActionToken = Depends(
         get_consume_identity_action_token
@@ -545,7 +545,7 @@ def get_reset_password_use_case(
 
 
 def get_change_password_use_case(
-    db: DbSession = Depends(get_db),
+    db: DbSession = Depends(get_db, scope="function"),
     user_repository: UserRepository = Depends(get_user_repository),
     password_hasher: PasswordHasher = Depends(get_password_hasher),
     session_repository: SessionRepository = Depends(get_session_repository),

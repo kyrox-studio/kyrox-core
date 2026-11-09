@@ -125,7 +125,7 @@ def _deleted_user_response(
 def list_deleted_users(
     organization_id: UUID,
     context: AuthorizationContext = Depends(require_permission("identity.users.read")),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ) -> ManagedUserListResponse:
     assert_organization_scope(organization_id, context)
     _assert_deleted_user_admin(db, context)
@@ -166,7 +166,7 @@ def restore_deleted_user(
     organization_id: UUID,
     user_id: UUID,
     context: AuthorizationContext = Depends(require_permission("identity.users.update")),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ) -> ManagedUserResponse:
     assert_organization_scope(organization_id, context)
     _assert_deleted_user_admin(db, context)

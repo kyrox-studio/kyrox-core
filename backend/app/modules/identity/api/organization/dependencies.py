@@ -41,18 +41,18 @@ from app.modules.identity.infrastructure.organization.repositories.sqlalchemy_us
 
 
 def get_organization_repository(
-    db: DbSession = Depends(get_db),
+    db: DbSession = Depends(get_db, scope="function"),
     clock: Clock = Depends(get_clock),
 ) -> OrganizationRepository:
     return SqlAlchemyOrganizationRepository(db, clock)
 
 
-def get_role_repository(db: DbSession = Depends(get_db)) -> RoleRepository:
+def get_role_repository(db: DbSession = Depends(get_db, scope="function")) -> RoleRepository:
     return SqlAlchemyRoleRepository(db)
 
 
 def get_user_organization_reader(
-    db: DbSession = Depends(get_db),
+    db: DbSession = Depends(get_db, scope="function"),
 ) -> UserOrganizationReader:
     return SqlAlchemyUserOrganizationReader(db)
 

@@ -11,11 +11,11 @@ from app.modules.identity.infrastructure.authorization.services import (
 )
 
 
-def get_platform_user_reader(db: DbSession = Depends(get_db)) -> PlatformUserReader:
+def get_platform_user_reader(db: DbSession = Depends(get_db, scope="function")) -> PlatformUserReader:
     return SqlAlchemyPlatformUserReader(db)
 
 
-def get_permission_checker(db: DbSession = Depends(get_db)) -> PermissionChecker:
+def get_permission_checker(db: DbSession = Depends(get_db, scope="function")) -> PermissionChecker:
     return SqlAlchemyPermissionChecker(db)
 
 

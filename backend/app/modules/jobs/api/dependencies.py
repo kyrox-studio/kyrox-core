@@ -11,7 +11,7 @@ from app.modules.jobs.infrastructure.repositories import SqlAlchemyJobRepository
 from app.modules.jobs.infrastructure.worker.in_process_worker import InProcessJobWorker
 
 
-def get_job_repository(db: DbSession = Depends(get_db)) -> JobRepository:
+def get_job_repository(db: DbSession = Depends(get_db, scope="function")) -> JobRepository:
     return SqlAlchemyJobRepository(db)
 
 
