@@ -97,7 +97,7 @@ from app.modules.identity.infrastructure.authorization.repositories.sqlalchemy_u
 from app.modules.identity.infrastructure.organization.repositories.sqlalchemy_organization_repository import (
     SqlAlchemyOrganizationRepository,
 )
-from app.modules.identity.infrastructure.persistence.models import UserModel
+from app.modules.identity.infrastructure.persistence.user_lookup import user_organization_id
 from app.modules.notifications.api.dependencies import get_send_notification_use_case
 from app.modules.notifications.application.commands import SendNotificationCommand
 from app.modules.notifications.application.identity_templates import (
@@ -257,10 +257,9 @@ class _CoreLogoutAuditAdapter(LogoutAuditPort):
         self._audit_service = AuditService(SqlAlchemyAuditLogRepository(db))
 
     def record_logout(self, *, user_id: UUID, session_id: UUID) -> None:
-        user = self._db.get(UserModel, user_id)
         self._audit_service.record(
             RecordAuditEventCommand(
-                organization_id=None if user is None else user.organization_id,
+                organization_id=user_organization_id(self._db, user_id),
                 user_id=user_id,
                 session_id=session_id,
                 action="identity.user.logout",

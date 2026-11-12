@@ -1,21 +1,9 @@
-from dataclasses import dataclass
-from uuid import UUID
+"""Authorization context types; defined in the application layer so services can use them
+(BACKEND_ARCHITECTURE_STANDARDS §4.2). Re-exported here for API dependencies."""
 
+from app.modules.identity.application.authorization.context import (
+    AuthenticatedOrganizationContext,
+    AuthorizationContext,
+)
 
-@dataclass(frozen=True)
-class AuthorizationContext:
-    user_id: UUID
-    organization_id: UUID
-    email: str
-    is_super_admin: bool = False
-    # Session of the access token; audit rows carry it when known (F-C13).
-    session_id: UUID | None = None
-
-
-@dataclass(frozen=True)
-class AuthenticatedOrganizationContext:
-    user_id: UUID
-    organization_id: UUID
-    email: str
-    session_id: UUID
-    is_super_admin: bool = False
+__all__ = ["AuthenticatedOrganizationContext", "AuthorizationContext"]

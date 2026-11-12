@@ -27,12 +27,12 @@ from __future__ import annotations
 from collections.abc import Iterable
 from uuid import UUID
 
-from fastapi import status
+from http import HTTPStatus
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppException
-from app.modules.identity.api.authorization.context import AuthorizationContext
+from app.modules.identity.application.authorization.context import AuthorizationContext
 from app.modules.identity.infrastructure.authorization.persistence.models import (
     PermissionModel,
     RoleModel,
@@ -47,7 +47,7 @@ _HELD_LIFECYCLE_STATES = ("active", "locked")
 
 
 def _forbidden(message: str) -> AppException:
-    return AppException(message, status_code=status.HTTP_403_FORBIDDEN)
+    return AppException(message, status_code=HTTPStatus.FORBIDDEN)
 
 
 def user_grant_ids(db: Session, user_id: UUID, organization_id: UUID) -> frozenset[UUID]:

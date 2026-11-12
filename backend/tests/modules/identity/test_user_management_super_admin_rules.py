@@ -6,9 +6,9 @@ import pytest
 
 from app.core.exceptions import AppException
 from app.modules.identity.api.authorization.context import AuthorizationContext
-from app.modules.identity.api.user_management.routes import (
-    _actor_is_super_admin,
-    _assert_super_admin_change_allowed,
+from app.modules.identity.infrastructure.user_management.service import (
+    actor_is_super_admin as _actor_is_super_admin,
+    assert_super_admin_change_allowed as _assert_super_admin_change_allowed,
 )
 
 
