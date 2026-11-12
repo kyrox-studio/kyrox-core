@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from app.modules.audit.application.dto import RecordAuditEventCommand
 from app.modules.audit.application.service import AuditService
 from app.modules.audit.infrastructure.repositories import SqlAlchemyAuditLogRepository
-from app.modules.identity.api.authorization.context import AuthorizationContext
+from app.modules.identity.application.authorization.context import AuthorizationContext
 
 
 def record_identity_event(

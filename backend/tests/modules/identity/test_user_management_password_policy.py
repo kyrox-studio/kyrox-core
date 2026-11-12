@@ -1,7 +1,7 @@
 import pytest
 
 from app.core.exceptions import AppException
-from app.modules.identity.api.user_management.routes import _hash_password
+from app.modules.identity.infrastructure.user_management.service import hash_password as _hash_password
 from app.modules.identity.domain.authentication.value_objects.security.password_hash import (
     PasswordHash,
 )
