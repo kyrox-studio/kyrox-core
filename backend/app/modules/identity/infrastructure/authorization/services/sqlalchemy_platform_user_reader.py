@@ -1,3 +1,6 @@
+from uuid import UUID
+
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session as DbSession
 
 from app.modules.identity.domain.authentication.enums.user_status import UserStatus
@@ -5,7 +8,7 @@ from app.modules.identity.domain.authorization.value_objects.identity.user_id im
 from app.modules.identity.domain.authorization.value_objects.rbac.platform_user_snapshot import (
     PlatformUserSnapshot,
 )
-from app.modules.identity.infrastructure.persistence.models import UserModel
+from app.modules.identity.infrastructure.persistence.models import OrganizationModel, UserModel
 
 
 class SqlAlchemyPlatformUserReader:
@@ -24,3 +27,17 @@ class SqlAlchemyPlatformUserReader:
             is_deleted=model.deleted_at is not None,
             organization_id=model.organization_id,
         )
+
+    def list_active_notification_recipients(self) -> list[UUID]:
+        return list(self._session.scalars(
+            select(UserModel.id)
+            .outerjoin(OrganizationModel, UserModel.organization_id == OrganizationModel.id)
+            .where(
+                UserModel.status == UserStatus.ACTIVE.value,
+                UserModel.deleted_at.is_(None),
+                or_(
+                    UserModel.is_super_admin.is_(True),
+                    (OrganizationModel.status == "active") & OrganizationModel.deleted_at.is_(None),
+                ),
+            )
+        ))

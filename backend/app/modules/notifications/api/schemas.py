@@ -58,3 +58,43 @@ class SystemInAppNotificationRequest(BaseModel):
     body: str
     variables: dict[str, Any] | None = None
     idempotency_key: str = Field(min_length=1, max_length=128)
+
+
+class InboxMessageResponse(BaseModel):
+    id: UUID
+    subject: str
+    body: str
+    created_at: datetime
+    read_at: datetime | None
+    is_announcement: bool
+
+
+class InboxResponse(BaseModel):
+    items: list[InboxMessageResponse]
+    total: int
+    unread_count: int
+
+
+class AnnouncementHistoryItem(BaseModel):
+    id: UUID
+    subject: str
+    body: str
+    created_at: datetime
+    recipient_count: int
+
+
+class AnnouncementHistoryResponse(BaseModel):
+    items: list[AnnouncementHistoryItem]
+    total: int
+
+
+class AnnouncementRequest(BaseModel):
+    subject: str = Field(min_length=1, max_length=998)
+    body: str = Field(min_length=1, max_length=10000)
+    idempotency_key: UUID
+
+
+class AnnouncementResponse(BaseModel):
+    id: UUID
+    recipient_count: int
+    created: bool

@@ -22,6 +22,7 @@ class PlatformNotificationModel(Base):
         Index("ix_platform_notifications_organization_id", "organization_id"),
         Index("ix_platform_notifications_status_created", "status", "created_at"),
         Index("ix_platform_notifications_job_id", "job_id"),
+        Index("ix_platform_notifications_inbox", "recipient", "channel", "status", "created_at"),
         Index(
             "uq_platform_notifications_org_idempotency",
             "organization_id",
@@ -65,6 +66,7 @@ class PlatformNotificationModel(Base):
         nullable=False,
         server_default=func.now(),
     )
+    read_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     queued_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     sent_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     failed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)

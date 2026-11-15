@@ -15,10 +15,10 @@ from app.modules.identity.infrastructure.authentication.persistence.models impor
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_revision_is_linear_head() -> None:
+def test_login_throttles_revision_is_in_migration_chain() -> None:
     script = ScriptDirectory.from_config(Config(str(ROOT / "alembic.ini")))
 
-    assert script.get_heads() == ["20261027_0078"]
+    assert "20261027_0078" in {revision.revision for revision in script.walk_revisions()}
     assert script.get_revision("20261027_0078").down_revision == "20261027_0077"
 
 

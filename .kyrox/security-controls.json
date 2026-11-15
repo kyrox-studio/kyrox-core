@@ -31,7 +31,8 @@
         "backend/tests/modules/identity/authorization/test_privilege_hierarchy.py::test_editor_cannot_grant_unheld_permission_to_any_role",
         "backend/tests/modules/identity/authorization/test_privilege_hierarchy.py::test_actor_cannot_reshape_role_holding_unheld_permissions",
         "backend/tests/modules/identity/authorization/test_privilege_hierarchy.py::test_role_assignment_requires_roles_assign",
-        "backend/tests/modules/identity/authorization/test_privilege_hierarchy.py::test_assigner_cannot_assign_role_exceeding_own_grants"
+        "backend/tests/modules/identity/authorization/test_privilege_hierarchy.py::test_assigner_cannot_assign_role_exceeding_own_grants",
+        "backend/tests/modules/notifications/test_system_in_app_notifications.py::test_announcement_delivery_and_read_state_are_per_authenticated_user"
       ]
     },
     "SEC-02": {
@@ -41,7 +42,8 @@
         "backend/tests/modules/notifications/test_notifications_api_routes.py::test_get_notification_masks_other_organization",
         "backend/tests/modules/settings/test_settings_api_routes_org.py::test_organization_settings_do_not_leak_across_orgs",
         "backend/tests/modules/identity/organization/test_organization_api_routes.py::test_organization_user_cannot_spoof_another_organization_for_lifecycle_actions",
-        "backend/tests/modules/identity/authentication/test_core09_security_certification.py::test_activation_token_for_org_a_cannot_mutate_org_b"
+        "backend/tests/modules/identity/authentication/test_core09_security_certification.py::test_activation_token_for_org_a_cannot_mutate_org_b",
+        "backend/tests/modules/notifications/test_system_in_app_notifications.py::test_announcement_delivery_and_read_state_are_per_authenticated_user"
       ]
     },
     "SEC-03": {
@@ -96,7 +98,8 @@
         "backend/tests/modules/identity/organization/test_organization_value_objects.py::test_organization_slug_rejects_invalid_value",
         "backend/tests/modules/identity/test_user_management_password_policy.py::test_manual_user_password_hash_rejects_oversized_password",
         "backend/tests/modules/jobs/test_job_policy.py::test_policy_rejects_invalid_idempotency_key",
-        "backend/tests/modules/audit/test_service.py::test_audit_service_rejects_invalid_action_format"
+        "backend/tests/modules/audit/test_service.py::test_audit_service_rejects_invalid_action_format",
+        "backend/tests/modules/notifications/test_system_in_app_notifications.py::test_announcement_delivery_and_read_state_are_per_authenticated_user"
       ]
     },
     "SEC-09": {
@@ -178,7 +181,8 @@
         "backend/tests/modules/jobs/test_jobs_use_cases.py::test_enqueue_job_rejects_conflicting_idempotency_payload",
         "backend/tests/modules/jobs/test_jobs_use_cases.py::test_get_job_use_case_masks_other_org",
         "backend/tests/modules/jobs/test_fair_crm_lifecycle_signal_handler.py::test_handler_keeps_non_200_delivery_retryable_via_exception",
-        "backend/tests/modules/identity/organization/test_conditional_organization_tombstone.py::test_conditional_tombstone_rejects_stale_suspension_episode_without_mutation"
+        "backend/tests/modules/identity/organization/test_conditional_organization_tombstone.py::test_conditional_tombstone_rejects_stale_suspension_episode_without_mutation",
+        "backend/tests/modules/notifications/test_system_in_app_notifications.py::test_announcement_delivery_and_read_state_are_per_authenticated_user"
       ]
     }
   }
