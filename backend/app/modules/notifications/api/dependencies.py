@@ -1,3 +1,11 @@
+from app.modules.audit.application.service import AuditService
+from app.modules.audit.infrastructure.repositories import SqlAlchemyAuditLogRepository
+from app.modules.identity.infrastructure.authorization.services.sqlalchemy_platform_user_reader import (
+    SqlAlchemyPlatformUserReader,
+)
+from app.modules.notifications.application.inbox import InboxService
+from app.modules.notifications.infrastructure.inbox import SqlAlchemyInboxStore
+
 from dataclasses import dataclass
 
 from fastapi import BackgroundTasks, Depends, Header, HTTPException
@@ -114,3 +122,11 @@ def get_get_notification_use_case(
     return GetNotificationUseCase(notification_repository=notification_repository)
 
 
+
+
+def get_inbox_service(db: DbSession = Depends(get_db, scope="function")) -> InboxService:
+    recipients = SqlAlchemyPlatformUserReader(db)
+    store = SqlAlchemyInboxStore(
+        db, recipients.list_active_notification_recipients, AuditService(SqlAlchemyAuditLogRepository(db)),
+    )
+    return InboxService(store, NotificationPolicy())
